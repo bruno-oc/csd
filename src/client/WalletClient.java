@@ -2,7 +2,6 @@ package client;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.ws.rs.ProcessingException;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
@@ -38,12 +37,11 @@ public class WalletClient {
 		config.property(ClientProperties.CONNECT_TIMEOUT, CONNECTION_TIMEOUT);
 		// How much time to wait for the reply of the server after sending the request
 		config.property(ClientProperties.READ_TIMEOUT, REPLY_TIMEOUT);
-		Client client = ClientBuilder.newClient(config);
 
-		return client;
+		return ClientBuilder.newClient(config);
 	}
 	
-	public static double obtainCoin(String who, double amount) {
+	public double obtainCoin(String who, double amount) {
 		
 		WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
 
@@ -52,17 +50,15 @@ public class WalletClient {
 		while (retries < MAX_RETRIES) {
 			try {
 
-				Response r = target.path("/obtain/" + who).request().accept(MediaType.APPLICATION_JSON)
-						.post(Entity.entity(amount, MediaType.APPLICATION_JSON));
+				Response r = target.path("/obtain/" + who).request().accept(MediaType.APPLICATION_JSON).post(Entity.entity(amount, MediaType.APPLICATION_JSON));
 
 				if (r.getStatus() == Status.NO_CONTENT.getStatusCode() && r.hasEntity())
 					System.out.println("UserInBox Success, message posted with id: " + r.readEntity(Long.class));
 				else {
 					System.out.println("Error, HTTP error status: " + r.getStatus());
 				}
-				
-				double temp = r.readEntity(Double.class);
-				return temp;
+
+				return r.readEntity(Double.class);
 			} catch (ProcessingException pe) { // Error in communication with server
 				System.out.println("Timeout occurred.");
 				pe.printStackTrace(); // Could be removed
@@ -79,6 +75,7 @@ public class WalletClient {
 	}
 	
 	public static void main(String[] args) {
-		obtainCoin("henrique", 69);
+		WalletClient c = new WalletClient();
+		c.obtainCoin("bruno", 10);
 	}
 }
