@@ -23,7 +23,7 @@ public class Wallet implements WalletService {
 
     public Wallet() throws SQLException, ClassNotFoundException, FileNotFoundException {
         gson = new Gson();
-        reader = new BufferedReader(new FileReader("/users.json"));
+        reader = new BufferedReader(new FileReader("src/resources/users.json"));
         users = gson.fromJson(reader, HashMap.class);
     }
 
