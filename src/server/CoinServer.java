@@ -4,6 +4,7 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
+import java.sql.SQLException;
 import java.util.logging.Logger;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -27,7 +28,7 @@ public class CoinServer {
 	public static final int PORT = 8080;
 	public static final String ServerURI = "https://127.0.1.1:8080/coin";
 	
-	public static void main(String[] args) throws UnknownHostException {
+	public static void main(String[] args) throws UnknownHostException, SQLException, ClassNotFoundException {
 		
 		String ip = InetAddress.getLocalHost().getHostAddress();
 
@@ -47,8 +48,7 @@ public class CoinServer {
 			e.printStackTrace();
 		}
       
-        Log.info(String.format("%s Server ready @ %s\n",  InetAddress.getLocalHost().getCanonicalHostName(), ServerURI));     
-
+        Log.info(String.format("%s Server ready @ %s\n",  InetAddress.getLocalHost().getCanonicalHostName(), ServerURI));
 	}
 	
 }
