@@ -1,11 +1,9 @@
 package resources;
 
-import api.MySQLAccess;
 import api.Transaction;
 import api.User;
 import api.rest.WalletService;
 import com.google.gson.Gson;
-import com.google.gson.stream.JsonReader;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
