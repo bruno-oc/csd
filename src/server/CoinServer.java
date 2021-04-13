@@ -28,7 +28,7 @@ public class CoinServer {
 	public static final int PORT = 8080;
 	public static final String ServerURI = "https://127.0.1.1:8080/coin";
 	
-	public static void main(String[] args) throws UnknownHostException, SQLException, ClassNotFoundException {
+	public static void main(String[] args) throws Exception {
 		
 		String ip = InetAddress.getLocalHost().getHostAddress();
 

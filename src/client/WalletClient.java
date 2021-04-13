@@ -61,7 +61,7 @@ public class WalletClient {
 				return r.readEntity(Double.class);
 			} catch (ProcessingException pe) { // Error in communication with server
 				System.out.println("Timeout occurred.");
-				pe.printStackTrace(); // Could be removed
+				System.out.println(pe.getMessage()); // Could be removed
 				retries++;
 				try {
 					Thread.sleep(RETRY_PERIOD); // wait until attempting again.
