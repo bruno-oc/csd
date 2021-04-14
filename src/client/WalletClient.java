@@ -1,5 +1,7 @@
 package client;
 
+import java.util.Scanner;
+
 import javax.net.ssl.HttpsURLConnection;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
@@ -75,7 +77,34 @@ public class WalletClient {
 	}
 	
 	public static void main(String[] args) {
-		WalletClient c = new WalletClient();
-		c.obtainCoin("bruno", 10);
+		WalletClient w = new WalletClient();
+		Scanner s = new Scanner(System.in);
+		String input;
+		do {
+			input = s.nextLine();
+			String[] inputs = input.split(" ");
+			switch (inputs[0]) {
+			case "obtainCoins":
+				String who = inputs[1];
+				double amount = Double.parseDouble(inputs[2]);  
+				w.obtainCoin(who, amount);
+				break;
+			case "transferMoney":
+				
+				break;
+			case "currentAmount":
+				
+				break;
+			case "ledgerOfGlobalTransactions":
+				
+				break;
+			case "ledgerOfClientTransactions":
+				
+				break;
+
+			default:
+				break;
+			}
+		} while(input.equalsIgnoreCase("exit"));
 	}
 }
