@@ -43,7 +43,7 @@ public class WalletClient {
 		return ClientBuilder.newClient(config);
 	}
 	
-	public double obtainCoin(String who, double amount) {
+	public void obtainCoin(String who, double amount) {
 		
 		WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
 
@@ -54,13 +54,12 @@ public class WalletClient {
 
 				Response r = target.path("/obtain/" + who).request().accept(MediaType.APPLICATION_JSON).post(Entity.entity(amount, MediaType.APPLICATION_JSON));
 
-				if (r.getStatus() == Status.NO_CONTENT.getStatusCode() && r.hasEntity())
-					System.out.println("UserInBox Success, message posted with id: " + r.readEntity(Long.class));
-				else {
+				if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
+					System.out.println(who + " withdraw " + r.readEntity(Double.class));
+					return;
+				} else {
 					System.out.println("Error, HTTP error status: " + r.getStatus());
 				}
-
-				return r.readEntity(Double.class);
 			} catch (ProcessingException pe) { // Error in communication with server
 				System.out.println("Timeout occurred.");
 				System.out.println(pe.getMessage()); // Could be removed
@@ -73,7 +72,96 @@ public class WalletClient {
 				System.out.println("Retrying to execute request.");
 			}
 		}
-		return -1;
+	}
+	
+	public void transferMoney(String from, String to, double amount) {
+		WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
+
+		short retries = 0;
+
+		while (retries < MAX_RETRIES) {
+			try {
+
+				Response r = target.path("/transfer/" + from).queryParam("to", to).request().accept(MediaType.APPLICATION_JSON).post(Entity.entity(amount, MediaType.APPLICATION_JSON));
+				
+				if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
+					System.out.println("from: " + from + " to: " + to + " amount: " + r.readEntity(Double.class));
+					return;
+				} else {
+					System.out.println("Error, HTTP error status: " + r.getStatus());
+				}
+			} catch (ProcessingException pe) { // Error in communication with server
+				System.out.println("Timeout occurred.");
+				System.out.println(pe.getMessage()); // Could be removed
+				retries++;
+				try {
+					Thread.sleep(RETRY_PERIOD); // wait until attempting again.
+				} catch (InterruptedException e) {
+					// Nothing to be done here, if this happens we will just retry sooner.
+				}
+				System.out.println("Retrying to execute request.");
+			}
+		}
+	}
+	
+	public void currentAmount(String who) {
+		WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
+
+		short retries = 0;
+
+		while (retries < MAX_RETRIES) {
+			try {
+
+				Response r = target.path("/" + who + "/").request().accept(MediaType.APPLICATION_JSON).get();
+				
+				if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
+					System.out.println("balance: " + r.readEntity(Double.class));
+					return;
+				} else {
+					System.out.println("Error, HTTP error status: " + r.getStatus());
+				}
+			} catch (ProcessingException pe) { // Error in communication with server
+				System.out.println("Timeout occurred.");
+				System.out.println(pe.getMessage()); // Could be removed
+				retries++;
+				try {
+					Thread.sleep(RETRY_PERIOD); // wait until attempting again.
+				} catch (InterruptedException e) {
+					// Nothing to be done here, if this happens we will just retry sooner.
+				}
+				System.out.println("Retrying to execute request.");
+			}
+		}
+	}
+	
+	public void ledgerTransactions(String who) {
+		WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
+
+		short retries = 0;
+
+		while (retries < MAX_RETRIES) {
+			try {
+
+				Response r = target.path("/transactions/" + who).request().accept(MediaType.APPLICATION_JSON).get();
+				
+				if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
+					System.out.println(r.readEntity(String.class));
+					return;
+				} else {
+					System.out.println("Error, HTTP error status: " + r.getStatus());
+				}
+			} catch (ProcessingException pe) { // Error in communication with server
+				System.out.println("Timeout occurred.");
+				System.out.println(pe.getMessage()); // Could be removed
+				retries++;
+				try {
+					Thread.sleep(RETRY_PERIOD); // wait until attempting again.
+				} catch (InterruptedException e) {
+					// Nothing to be done here, if this happens we will just retry sooner.
+				}
+				System.out.println("Retrying to execute request.");
+			}
+		}
 	}
 	
 	public static void main(String[] args) {
@@ -85,26 +173,26 @@ public class WalletClient {
 			String[] inputs = input.split(" ");
 			switch (inputs[0]) {
 			case "obtainCoins":
-				String who = inputs[1];
 				double amount = Double.parseDouble(inputs[2]);  
-				w.obtainCoin(who, amount);
+				w.obtainCoin(inputs[1], amount);
 				break;
 			case "transferMoney":
-				
+				double amount1 = Double.parseDouble(inputs[3]);
+				w.transferMoney(inputs[1], inputs[2], amount1);
 				break;
 			case "currentAmount":
-				
+				w.currentAmount(inputs[1]);
 				break;
 			case "ledgerOfGlobalTransactions":
-				
+				w.ledgerTransactions("");
 				break;
 			case "ledgerOfClientTransactions":
-				
+				w.ledgerTransactions(inputs[1]);
 				break;
 
 			default:
 				break;
 			}
-		} while(input.equalsIgnoreCase("exit"));
+		} while(!input.equalsIgnoreCase("exit"));
 	}
 }
