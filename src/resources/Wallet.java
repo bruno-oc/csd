@@ -40,7 +40,7 @@ public class Wallet implements WalletService {
     	db.saveUsers(users);
     	db.addTransaction(from, to, amount);
     	
-        return 0; //idk what is supposed to be returned
+        return amount;
     }
 
     @Override
