@@ -28,7 +28,7 @@ public interface WalletService {
     @Path("/transfer/{from}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-    double transferMoney (@PathParam("from") String from, @QueryParam("to") String to, @QueryParam("amount") double amount);
+    double transferMoney (@PathParam("from") String from, @QueryParam("to") String to, double amount);
 
     @GET
 	@Path("/{who}")
