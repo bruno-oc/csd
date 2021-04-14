@@ -24,8 +24,8 @@ public class DataBase {
     private List<Transaction> transactions;
 
 	public DataBase() {
-		users = new HashMap<String, User>();
-		transactions = new ArrayList<Transaction>();
+		users = getUsers();
+		transactions = getTransactions();
 		//clientTranscations = new LinkedHashMap<String, List<Transaction>>();
 	}
 	
