@@ -1,1 +1,1 @@
-{"Luis":{"name":"Luis","password":"pwd","amount":69.0}}
+{"Bruno":{"name":"Bruno","password":"pwd","amount":79.0,"transactions":[{"from":"Luis","to":"Bruno","amount":10.0}]},"Luis":{"name":"Luis","password":"pwd","amount":50.0,"transactions":[{"from":"Luis","to":"Bruno","amount":10.0}]}}
