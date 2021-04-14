@@ -1,14 +1,11 @@
 package db;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -19,18 +16,17 @@ import com.google.gson.reflect.TypeToken;
 
 import api.Transaction;
 import api.User;
+import resources.Wallet;
 
 public class DataBase {
 	
     private Map<String, User> users;
     private List<Transaction> transactions;
-    private Map<String, List<Transaction>> clientTranscations;
-    private BufferedReader reader;
 
 	public DataBase() {
 		users = new HashMap<String, User>();
 		transactions = new ArrayList<Transaction>();
-		clientTranscations = new LinkedHashMap<String, List<Transaction>>();
+		//clientTranscations = new LinkedHashMap<String, List<Transaction>>();
 	}
 	
 	private void writeData(String path, String data) {
@@ -48,7 +44,6 @@ public class DataBase {
 			Scanner scanner = new Scanner(new File(path));
 			return scanner.useDelimiter("\\Z").next();
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return "";
@@ -57,12 +52,7 @@ public class DataBase {
 	public void addUser(String name, String password, double amount) {
 		User user = new User(name, password, amount);
 		users.put(name, user);
-		
-		Gson gson = new Gson();
-		String jsonString = gson.toJson(users);
-		System.out.println(jsonString);
-		
-		writeData("src/resources/users.json", jsonString);
+		saveUsers(users);
 	}
 	
 	public Map<String, User> getUsers() {
@@ -75,13 +65,19 @@ public class DataBase {
 		return clonedMap;
 	}
 	
+	public void saveUsers(Map<String, User> users) {
+		Gson gson = new Gson();
+		String jsonString = gson.toJson(users);
+		
+		writeData("src/resources/users.json", jsonString);
+	}
+	
 	public void addTransaction(String from, String to, double amount) {
 		Transaction t = new Transaction(from, to, amount);
 		transactions.add(t);
 		
 		Gson gson = new Gson();
 		String jsonString = gson.toJson(transactions);
-		System.out.println(jsonString);
 		
 		writeData("src/resources/transactions.json", jsonString);
 	}
@@ -92,19 +88,23 @@ public class DataBase {
 		Gson gson = new Gson();
 		Type type = new TypeToken<List<Transaction>>(){}.getType();
 		List<Transaction> list = gson.fromJson(jsonString, type);
-		
-		System.out.println(list.get(0).getFrom());
-        
+		        
 		return list;
 	}
 	
 	public static void main(String[] args) {
 		DataBase db = new DataBase();
-		//db.addUser("Luis", "pwd", 69.0);
+		db.addUser("Luis", "pwd", 69.0);
+		db.addUser("Bruno", "pwd", 69.0);
 		//db.getUsers();
 		
 		//db.addTransaction("luis", "bruno", 10.0);
-		db.getTransactions();
+		//db.getTransactions();
+		
+		Wallet w = new Wallet();
+		w.obtainCoins("Luis", 9);
+		w.transferMoney("Luis", "Bruno", 10);
+		System.out.println(w.currentAmount("Luis"));
 	}
 	
 }
