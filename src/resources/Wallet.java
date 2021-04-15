@@ -1,17 +1,22 @@
 package resources;
 
 import api.rest.WalletService;
+import bftsmart.tom.ServiceProxy;
 import db.DataBase;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Wallet implements WalletService {
 	
 	private DataBase db;
+	private ServiceProxy proxy;
 
     public Wallet() {
         db = new DataBase();
+        proxy = new ServiceProxy(0);
     }
 
     @Override
@@ -19,7 +24,18 @@ public class Wallet implements WalletService {
         System.out.println("obtainCoins");
         String log = "obtainCoins: who = " + who + " amount = " + amount;  
         db.addLog(log);
-        
+
+        try {
+            byte[] reply = proxy.invokeOrdered(log.getBytes());
+            if (reply != null) {
+                int newValue = new DataInputStream(new ByteArrayInputStream(reply)).readInt();
+                System.out.println(", returned value: " + newValue);
+            } else {
+                System.out.println(", ERROR! Exiting.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return getCurrentAmount(who);
     }
 
@@ -28,7 +44,7 @@ public class Wallet implements WalletService {
     	System.out.println("transferMoney");
     	String log = "transferMoney: from = " + from + " to = " + to + " amount = " + amount;  
         db.addLog(log);
-    	
+
         return amount;
     }
     
@@ -60,28 +76,17 @@ public class Wallet implements WalletService {
     	System.out.println("currentAmount");
         return getCurrentAmount(who);
     }
-    
-    private List<String> getTransactions(){
-    	List<String> temp = new ArrayList<String>();
-    	List<String> logs = db.getLogs();
-    	for(String log : logs) {
-    		if(log.contains("transferMoney")) {
-    			temp.add(log);
-    		}
-    	}
-    	return temp;
-    }
 
     @Override
     public List<String> ledgerOfGlobalTransactions() {
     	System.out.println("ledgerOfGlobalTransactions");
-        return getTransactions();
+        return db.getLogs();
     }
 
     @Override
     public List<String> ledgerOfClientTransactions(String who) {
     	List<String> temp = new ArrayList<String>();
-    	List<String> transactions = getTransactions();
+    	List<String> transactions = db.getLogs();;
     	for(String log : transactions) {
     		if(log.contains(who)) {
     			temp.add(log);
