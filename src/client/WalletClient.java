@@ -55,7 +55,7 @@ public class WalletClient {
 				Response r = target.path("/obtain/" + who).request().accept(MediaType.APPLICATION_JSON).post(Entity.entity(amount, MediaType.APPLICATION_JSON));
 
 				if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
-					System.out.println(who + " withdraw " + r.readEntity(Double.class));
+					System.out.println(who + " balance: " + r.readEntity(Double.class));
 					return;
 				} else {
 					System.out.println("Error, HTTP error status: " + r.getStatus());
@@ -169,6 +169,7 @@ public class WalletClient {
 		Scanner s = new Scanner(System.in);
 		String input;
 		do {
+			System.out.print("> ");
 			input = s.nextLine();
 			String[] inputs = input.split(" ");
 			switch (inputs[0]) {
