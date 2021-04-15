@@ -38,12 +38,12 @@ public interface WalletService {
     @GET
 	@Path("/transactions")
 	@Produces(MediaType.APPLICATION_JSON)
-    List<Transaction> ledgerOfGlobalTransactions ();
+    List<String> ledgerOfGlobalTransactions ();
 
     @GET
 	@Path("/transactions/{who}")
 	@Produces(MediaType.APPLICATION_JSON)
-    List<Transaction> ledgerOfClientTransactions(@PathParam("who") String who);
+    List<String> ledgerOfClientTransactions(@PathParam("who") String who);
     
     @POST
     @Path("/minerate/{who}")
