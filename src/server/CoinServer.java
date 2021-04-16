@@ -33,7 +33,7 @@ public class CoinServer {
 		String ip = InetAddress.getLocalHost().getHostAddress();
 
 		//String serverURI = String.format("https://%s:%s", ip, PORT);
-		
+
         WalletService wallet = new Wallet(Integer.parseInt(args[0]));
 
         HttpsURLConnection.setDefaultHostnameVerifier(new InsecureHostnameVerifier());
