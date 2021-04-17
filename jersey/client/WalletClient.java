@@ -1,8 +1,14 @@
 package client;
 
+import java.io.FileInputStream;
+import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
 
 import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -31,9 +37,42 @@ public class WalletClient {
 	public WalletClient() {
 		restClient = this.startClient();
 	}
+
+	private static SSLContext getContext() throws Exception {
+		KeyStore ks = KeyStore.getInstance("JKS");
+		KeyStore ts = KeyStore.getInstance("JKS");
+
+		try (FileInputStream fis = new FileInputStream("security/server.ks")) {
+			ks.load(fis, "password".toCharArray());
+		}
+
+		try (FileInputStream fis = new FileInputStream("security/truststore.ks")) {
+			ts.load(fis, "changeit".toCharArray());
+		}
+
+		KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+		kmf.init(ks, "password".toCharArray());
+
+		TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
+		tmf.init(ts);
+
+		String protocol = "TLSv1.2";
+		SSLContext sslContext = SSLContext.getInstance(protocol);
+
+		sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+
+		return sslContext;
+	}
 	
 	private Client startClient() {
+
 		HttpsURLConnection.setDefaultHostnameVerifier(new InsecureHostnameVerifier());
+		try {
+			HttpsURLConnection.setDefaultSSLSocketFactory(getContext().getSocketFactory());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
 		ClientConfig config = new ClientConfig();
 		// How much time until timeout on opening the TCP connection to the server
 		config.property(ClientProperties.CONNECT_TIMEOUT, CONNECTION_TIMEOUT);
