@@ -20,13 +20,14 @@ public class WalletController {
     private static ServiceProxy serviceProxy;
     
     public static void startServiceProxy(int id) {
-    	serviceProxy = new ServiceProxy(id);
+    	System.out.println(id);
+    	//serviceProxy = new ServiceProxy(id);
     }
-    
+
     @PostMapping(value = "/obtainCoins", produces = MediaType.APPLICATION_JSON_VALUE)
     public double obtainCoins(@RequestParam(value = "user") String user, @RequestBody double amount) {
         logs.add("obtainCoins " + user + " " + amount);
-        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+        /*try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
                 ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
                objOut.writeObject(RequestType.OBTAIN_COINS);
@@ -47,8 +48,8 @@ public class WalletController {
            } catch (IOException | ClassNotFoundException e) {
                System.out.println("Exception: " + e.getMessage());
            }
-           return -1;
-        //return getCurrentAmount(user);
+           return -1;*/
+        return getCurrentAmount(user);
     }
 
     @PostMapping("/transfer")
