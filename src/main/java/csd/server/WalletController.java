@@ -3,6 +3,11 @@ package csd.server;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
+import bftsmart.tom.ServiceProxy;
+import csd.replicas.RequestType;
+
+import java.io.*;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -11,11 +16,39 @@ import java.util.List;
 public class WalletController {
 
     private final List<String> logs = new LinkedList<>();
-
+    
+    private static ServiceProxy serviceProxy;
+    
+    public static void startServiceProxy(int id) {
+    	serviceProxy = new ServiceProxy(id);
+    }
+    
     @PostMapping(value = "/obtainCoins", produces = MediaType.APPLICATION_JSON_VALUE)
     public double obtainCoins(@RequestParam(value = "user") String user, @RequestBody double amount) {
         logs.add("obtainCoins " + user + " " + amount);
-        return getCurrentAmount(user);
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+                ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+
+               objOut.writeObject(RequestType.OBTAIN_COINS);
+               objOut.writeObject(user);
+               objOut.writeObject(amount);
+
+               objOut.flush();
+               byteOut.flush();
+
+               byte[] reply = serviceProxy.invokeOrdered(byteOut.toByteArray());
+               if (reply.length == 0)
+                   return -1;
+               try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
+                    ObjectInput objIn = new ObjectInputStream(byteIn)) {
+                   return (double) objIn.readObject();
+               }
+
+           } catch (IOException | ClassNotFoundException e) {
+               System.out.println("Exception: " + e.getMessage());
+           }
+           return -1;
+        //return getCurrentAmount(user);
     }
 
     @PostMapping("/transfer")
