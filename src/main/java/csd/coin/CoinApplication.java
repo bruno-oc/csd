@@ -11,14 +11,18 @@ public class CoinApplication {
 
 	public static void main(String[] args) {
 		String cmd = args[0];
-		if(cmd.equals("server")) {
-			SpringApplication.run(CoinApplication.class, args);
-		} else if(cmd.equals("client")) {
-			WalletClient.main(args);
-		} else if(cmd.equals("replica")) {
-			System.out.println(args[1]);
-			String[] str = {args[1]};
-			BFTServer.main(str);
+		switch (cmd) {
+			case "server":
+				SpringApplication.run(CoinApplication.class, args);
+				break;
+			case "client":
+				WalletClient.main(args);
+				break;
+			case "replica":
+				System.out.println(args[1]);
+				String[] str = {args[1]};
+				BFTServer.main(str);
+				break;
 		}
 	}
 
