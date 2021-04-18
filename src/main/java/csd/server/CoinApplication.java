@@ -8,6 +8,7 @@ public class CoinApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(CoinApplication.class, args);
+		WalletController.startServiceProxy(Integer.parseInt(args[0]));
 	}
 
 }
