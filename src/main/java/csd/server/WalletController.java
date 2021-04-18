@@ -1,4 +1,4 @@
-package csd.coin;
+package csd.server;
 
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -15,19 +15,17 @@ public class WalletController {
     @PostMapping(value = "/obtainCoins", produces = MediaType.APPLICATION_JSON_VALUE)
     public double obtainCoins(@RequestParam(value = "user") String user, @RequestBody double amount) {
         logs.add("obtainCoins " + user + " " + amount);
-        return currentAmount(user);
+        return getCurrentAmount(user);
     }
 
     @PostMapping("/transfer")
     public double transfer(@RequestParam(value = "from") String from, @RequestParam(value = "to") String to, @RequestBody double amount) {
         logs.add("transfer from=" + from + " to=" + to + " " + amount);
-        return currentAmount(from);
+        return amount;
     }
-
-    @GetMapping("/currentAmount")
-    public double currentAmount(@RequestParam(value = "user") String user) {
-        logs.add("currentAmount " + user);
-        double total = 0, aux;
+    
+    private double getCurrentAmount(String user) {
+    	double total = 0, aux;
         String[] tmp;
         for (String log : logs)
             if (log.contains(user) && log.matches(".*\\d.*")) {
@@ -44,14 +42,19 @@ public class WalletController {
         return total;
     }
 
-    @GetMapping("/ledger/global")
-    public List<String> ledgerOfGlobalTransactions() {
-        return logs;
+    @GetMapping("/currentAmount")
+    public double currentAmount(@RequestParam(value = "user") String user) {
+        logs.add("currentAmount " + user);
+        return getCurrentAmount(user);
     }
 
     @GetMapping("/ledger")
-    public List<String> ledgerOfClientTransactions(@RequestParam(value = "user") String user) {
-        List<String> res = new LinkedList<>();
+    public List<String> ledgerOfClientTransactions(@RequestParam(value="user", defaultValue = "global") String user) {
+        System.out.println(user);
+    	if(user.contains("global"))
+        	return logs;
+        
+    	List<String> res = new LinkedList<>();
         for (String log : logs)
             if (log.contains(user))
                 res.add(log);
