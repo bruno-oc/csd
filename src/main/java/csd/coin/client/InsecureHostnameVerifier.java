@@ -1,4 +1,4 @@
-package server;
+package csd.coin.client;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLSession;

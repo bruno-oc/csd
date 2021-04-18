@@ -1,10 +1,10 @@
-package csd.server;
+package csd.coin.server;
 
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import bftsmart.tom.ServiceProxy;
-import csd.replicas.RequestType;
+import csd.coin.replicas.RequestType;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -17,17 +17,12 @@ public class WalletController {
 
     private final List<String> logs = new LinkedList<>();
     
-    private static ServiceProxy serviceProxy;
-    
-    public static void startServiceProxy(int id) {
-    	System.out.println(id);
-    	//serviceProxy = new ServiceProxy(id);
-    }
+    private ServiceProxy serviceProxy = new ServiceProxy(420);
 
     @PostMapping(value = "/obtainCoins", produces = MediaType.APPLICATION_JSON_VALUE)
     public double obtainCoins(@RequestParam(value = "user") String user, @RequestBody double amount) {
         logs.add("obtainCoins " + user + " " + amount);
-        /*try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
                 ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
                objOut.writeObject(RequestType.OBTAIN_COINS);
@@ -48,8 +43,7 @@ public class WalletController {
            } catch (IOException | ClassNotFoundException e) {
                System.out.println("Exception: " + e.getMessage());
            }
-           return -1;*/
-        return getCurrentAmount(user);
+           return -1;
     }
 
     @PostMapping("/transfer")

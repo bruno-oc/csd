@@ -1,8 +1,7 @@
-package client;
+package csd.coin.client;
 
 import java.io.FileInputStream;
 import java.security.KeyStore;
-import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -20,10 +19,7 @@ import javax.ws.rs.core.Response.Status;
 
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
-
-import api.rest.WalletService;
-import server.CoinServer;
-import server.InsecureHostnameVerifier;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 public class WalletClient {
 	
@@ -31,6 +27,8 @@ public class WalletClient {
 	public final static long RETRY_PERIOD = 10000;
 	public final static int CONNECTION_TIMEOUT = 10000;
 	public final static int REPLY_TIMEOUT = 6000;
+	
+	public final static String URL = "http://localhost:8080/wallet";
 
 	private static Client restClient;
 
@@ -38,7 +36,7 @@ public class WalletClient {
 		restClient = this.startClient();
 	}
 
-	private static SSLContext getContext() throws Exception {
+	/*private static SSLContext getContext() throws Exception {
 		KeyStore ks = KeyStore.getInstance("JKS");
 		KeyStore ts = KeyStore.getInstance("JKS");
 
@@ -62,17 +60,10 @@ public class WalletClient {
 		sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
 
 		return sslContext;
-	}
+	}*/
 	
 	private Client startClient() {
-
 		HttpsURLConnection.setDefaultHostnameVerifier(new InsecureHostnameVerifier());
-		try {
-			HttpsURLConnection.setDefaultSSLSocketFactory(getContext().getSocketFactory());
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
 		ClientConfig config = new ClientConfig();
 		// How much time until timeout on opening the TCP connection to the server
 		config.property(ClientProperties.CONNECT_TIMEOUT, CONNECTION_TIMEOUT);
@@ -84,14 +75,14 @@ public class WalletClient {
 	
 	public void obtainCoin(String who, double amount) {
 		
-		WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
+		WebTarget target = restClient.target(URL).path("/obtainCoins");
 
 		short retries = 0;
 
 		while (retries < MAX_RETRIES) {
 			try {
 
-				Response r = target.path("/obtain/" + who).request().accept(MediaType.APPLICATION_JSON).post(Entity.entity(amount, MediaType.APPLICATION_JSON));
+				Response r = target.queryParam("user", who).request().accept(MediaType.APPLICATION_JSON).post(Entity.entity(amount, MediaType.APPLICATION_JSON));
 
 				if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
 					System.out.println(who + " balance: " + r.readEntity(Double.class));
@@ -114,14 +105,14 @@ public class WalletClient {
 	}
 	
 	public void transferMoney(String from, String to, double amount) {
-		WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
+		WebTarget target = restClient.target(URL).path("/transfer");
 
 		short retries = 0;
 
 		while (retries < MAX_RETRIES) {
 			try {
 
-				Response r = target.path("/transfer/" + from).queryParam("to", to).request().accept(MediaType.APPLICATION_JSON).post(Entity.entity(amount, MediaType.APPLICATION_JSON));
+				Response r = target.queryParam("from", from).queryParam("to", to).request().accept(MediaType.APPLICATION_JSON).post(Entity.entity(amount, MediaType.APPLICATION_JSON));
 				
 				if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
 					System.out.println("from: " + from + " to: " + to + " amount: " + r.readEntity(Double.class));
@@ -144,14 +135,14 @@ public class WalletClient {
 	}
 	
 	public void currentAmount(String who) {
-		WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
+		WebTarget target = restClient.target(URL).path("/currentAmount");
 
 		short retries = 0;
 
 		while (retries < MAX_RETRIES) {
 			try {
 
-				Response r = target.path("/" + who + "/").request().accept(MediaType.APPLICATION_JSON).get();
+				Response r = target.queryParam("user", who).request().accept(MediaType.APPLICATION_JSON).get();
 				
 				if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
 					System.out.println("balance: " + r.readEntity(Double.class));
@@ -174,14 +165,14 @@ public class WalletClient {
 	}
 	
 	public void ledgerTransactions(String who) {
-		WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
+		WebTarget target = restClient.target(URL).path("/ledger");
 
 		short retries = 0;
 
 		while (retries < MAX_RETRIES) {
 			try {
 
-				Response r = target.path("/transactions/" + who).request().accept(MediaType.APPLICATION_JSON).get();
+				Response r = target.queryParam("user", who).request().accept(MediaType.APPLICATION_JSON).get();
 				
 				if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
 					System.out.println(r.readEntity(String.class));
@@ -206,33 +197,52 @@ public class WalletClient {
 	public static void main(String[] args) {
 		WalletClient w = new WalletClient();
 		Scanner s = new Scanner(System.in);
-		String input;
+		String input, who, to;
+		double amount;
+		System.out.println("1 - obtainCoins");
+		System.out.println("2 - transferMoney");
+		System.out.println("3 - currentAmount");
+		System.out.println("4 - ledgerOfGlobalTransactions");
+		System.out.println("5 - ledgerOfClientTransactions");
+		System.out.println("6 - exit");
 		do {
 			System.out.print("> ");
 			input = s.nextLine();
 			String[] inputs = input.split(" ");
 			switch (inputs[0]) {
-			case "obtainCoins":
-				double amount = Double.parseDouble(inputs[2]);  
-				w.obtainCoin(inputs[1], amount);
+			case "1":
+				System.out.print("who: ");
+				who = s.nextLine();
+				System.out.print("amount: ");
+				amount = Double.parseDouble(s.nextLine());
+				w.obtainCoin(who, amount);
 				break;
-			case "transferMoney":
-				double amount1 = Double.parseDouble(inputs[3]);
-				w.transferMoney(inputs[1], inputs[2], amount1);
+			case "2":
+				System.out.print("from: ");
+				who = s.nextLine();
+				System.out.print("to: ");
+				to = s.nextLine();
+				System.out.print("amount: ");
+				amount = Double.parseDouble(s.nextLine());
+				w.transferMoney(who, to, amount);
 				break;
-			case "currentAmount":
-				w.currentAmount(inputs[1]);
+			case "3":
+				System.out.print("who: ");
+				who = s.nextLine();
+				w.currentAmount(who);
 				break;
-			case "ledgerOfGlobalTransactions":
+			case "4":
 				w.ledgerTransactions("");
 				break;
-			case "ledgerOfClientTransactions":
-				w.ledgerTransactions(inputs[1]);
+			case "5":
+				System.out.print("who: ");
+				who = s.nextLine();
+				w.ledgerTransactions(who);
 				break;
 
 			default:
 				break;
 			}
-		} while(!input.equalsIgnoreCase("exit"));
+		} while(!input.equalsIgnoreCase("6"));
 	}
 }

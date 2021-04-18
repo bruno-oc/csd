@@ -1,4 +1,4 @@
-package csd.replicas;
+package csd.coin.replicas;
 
 public enum RequestType {
     OBTAIN_COINS, TRANSFER, CLIENT_AMOUNT, GET, GET_ALL;

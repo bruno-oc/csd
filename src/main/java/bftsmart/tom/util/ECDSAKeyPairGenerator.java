@@ -23,6 +23,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.spec.ECGenParameterSpec;
 import org.apache.commons.codec.binary.Base64;
 
@@ -58,7 +59,7 @@ public class ECDSAKeyPairGenerator {
     }
     
     private void saveToFile(int id, PublicKey puk, PrivateKey prk) throws Exception {
-        String path = "config" +System.getProperty("file.separator")+"ecdsakeys"+
+        String path = "config"+System.getProperty("file.separator")+"ecdsakeys"+
                 System.getProperty("file.separator");
         
         BufferedWriter w = new BufferedWriter(new FileWriter(path+"publickey"+id,false));

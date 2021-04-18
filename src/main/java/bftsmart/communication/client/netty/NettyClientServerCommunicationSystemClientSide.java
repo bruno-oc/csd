@@ -128,7 +128,7 @@ public class NettyClientServerCommunicationSystemClientSide extends SimpleChanne
 						logger.error("Impossible to connect to " + replicaId);
 					}
 
-				} catch (NullPointerException ex) {
+				} catch (java.lang.NullPointerException ex) {
 					// What is this??? This is not possible!!!
 					logger.debug("Should fix the problem, and I think it has no other implications :-), "
 							+ "but we must make the servers store the view in a different place.");

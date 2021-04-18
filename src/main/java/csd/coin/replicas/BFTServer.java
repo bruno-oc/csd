@@ -1,4 +1,4 @@
-package csd.replicas;
+package csd.coin.replicas;
 
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
