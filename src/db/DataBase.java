@@ -17,21 +17,18 @@ public class DataBase {
 
     public DataBase(String filePath) {
         this.filePath = filePath;
-    }
-
-    public static void main(String[] args) {
-        DataBase db = new DataBase("file");
-        db.addLog("bla bla bla");
-        db.addLog("log2");
-        db.addLog("teste = sdcsf");
-
-        List<String> logs = db.getLogs();
-        System.out.println(logs.get(2));
-
-        String str = "bla bla 4.56 bla bla";
-        str = str.replaceAll("\\D+", ".");
-        str = str.substring(1, str.length() - 1);
-        System.out.println(str);
+        File f = new File(filePath);
+        if(!f.exists()) {
+        	try {
+				f.createNewFile();
+				FileWriter w = new FileWriter(f);
+	            w.write("[]");
+	            w.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+        }
     }
 
     private void writeData(String path, String data) {
@@ -50,18 +47,9 @@ public class DataBase {
             Scanner scanner = new Scanner(new File(path));
             return scanner.useDelimiter("\\Z").next();
         } catch (FileNotFoundException e) {
-            System.out.println(":::::::::::::::::Creating file");
-            File f = new File(path);
-            try {
-                f.createNewFile();
-                FileWriter w = new FileWriter(f);
-                w.write("[]");
-                w.close();
-            } catch (IOException ioException) {
-                ioException.printStackTrace();
-            }
-            return readData(path);
+            e.printStackTrace();
         }
+        return "";
     }
 
     public void addLog(String log) {
