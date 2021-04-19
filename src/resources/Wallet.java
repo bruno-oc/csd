@@ -6,7 +6,7 @@ import db.DataBase;
 import server.replica.RequestType;
 
 import java.io.*;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public class Wallet implements WalletService {
@@ -14,19 +14,17 @@ public class Wallet implements WalletService {
     private final DataBase db;
     private final ServiceProxy serviceProxy;
 
-    public Wallet(int id) {
-        db = new DataBase();
+    public Wallet(String filePath, int id) {
+        db = new DataBase(filePath);
         serviceProxy = new ServiceProxy(id);
     }
 
     @Override
     public double obtainCoins(String who, double amount) {
         System.out.println("obtainCoins");
-        String log = "obtainCoins: who = " + who + " amount = " + amount;
-        db.addLog(log);
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-             ObjectOutput objOut = new ObjectOutputStream(byteOut)) {
+             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
             objOut.writeObject(RequestType.OBTAIN_COINS);
             objOut.writeObject(who);
@@ -44,7 +42,7 @@ public class Wallet implements WalletService {
             }
 
         } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Exception putting value into map: " + e.getMessage());
+            System.out.println("Exception: " + e.getMessage());
         }
         return -1;
     }
@@ -52,56 +50,112 @@ public class Wallet implements WalletService {
     @Override
     public double transferMoney(String from, String to, double amount) {
         System.out.println("transferMoney");
-        String log = "transferMoney: from = " + from + " to = " + to + " amount = " + amount;
-        db.addLog(log);
 
-        return amount;
-    }
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
-    private double getCurrentAmount(String who) {
-        double amount = 0;
-        List<String> logs = db.getLogs();
-        for (String log : logs) {
-            System.out.println(log);
-            if (log.contains(who) && log.contains("amount")) {
-                String str = log.replaceAll("\\D+", ".");
-                str = str.substring(1, str.length() - 1);
-                double temp = Double.parseDouble(str);
+            objOut.writeObject(RequestType.TRANSFER);
+            objOut.writeObject(from);
+            objOut.writeObject(to);
+            objOut.writeObject(amount);
 
-                if (log.contains("obtainCoins"))
-                    amount += temp;
-                if (log.contains("from = " + who))
-                    amount -= temp;
-                if (log.contains("to = " + who))
-                    amount += temp;
+            objOut.flush();
+            byteOut.flush();
 
+            byte[] reply = serviceProxy.invokeOrdered(byteOut.toByteArray());
+            if (reply.length == 0)
+                return -1;
+            try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
+                 ObjectInput objIn = new ObjectInputStream(byteIn)) {
+                return (double) objIn.readObject();
             }
+
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Exception: " + e.getMessage());
         }
-        return amount;
+        return -1;
     }
 
     @Override
     public double currentAmount(String who) {
         System.out.println("currentAmount");
-        return getCurrentAmount(who);
+
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+
+            objOut.writeObject(RequestType.CLIENT_AMOUNT);
+            objOut.writeObject(who);
+
+            objOut.flush();
+            byteOut.flush();
+
+            byte[] reply = serviceProxy.invokeUnordered(byteOut.toByteArray());
+            if (reply.length == 0)
+                return -1;
+            try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
+                 ObjectInput objIn = new ObjectInputStream(byteIn)) {
+                return (double) objIn.readObject();
+            }
+
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Exception: " + e.getMessage());
+        }
+        return -1;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public List<String> ledgerOfGlobalTransactions() {
         System.out.println("ledgerOfGlobalTransactions");
-        return db.getLogs();
+
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+
+            objOut.writeObject(RequestType.GET_ALL);
+
+            objOut.flush();
+            byteOut.flush();
+
+            byte[] reply = serviceProxy.invokeUnordered(byteOut.toByteArray());
+            if (reply.length == 0)
+                return new LinkedList<>();
+            try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
+                 ObjectInput objIn = new ObjectInputStream(byteIn)) {
+                return (List<String>) objIn.readObject();
+            }
+
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Exception: " + e.getMessage());
+        }
+        return new LinkedList<>();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public List<String> ledgerOfClientTransactions(String who) {
-        List<String> temp = new ArrayList<>();
-        List<String> transactions = db.getLogs();
-        for (String log : transactions) {
-            if (log.contains(who)) {
-                temp.add(log);
+        System.out.println("ledgerOfClientTransactions");
+
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+
+            objOut.writeObject(RequestType.GET);
+            objOut.writeObject(who);
+
+            objOut.flush();
+            byteOut.flush();
+
+            byte[] reply = serviceProxy.invokeUnordered(byteOut.toByteArray());
+            if (reply.length == 0)
+                return new LinkedList<>();
+            try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
+                 ObjectInput objIn = new ObjectInputStream(byteIn)) {
+                return (List<String>) objIn.readObject();
             }
+
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Exception: " + e.getMessage());
         }
-        return temp;
+        return new LinkedList<>();
     }
 
     @Override

@@ -61,7 +61,7 @@ public class CoinServer {
         */
         HttpsURLConnection.setDefaultHostnameVerifier(new InsecureHostnameVerifier());
 
-        WalletService wallet = new Wallet(Integer.parseInt(args[0]));
+        WalletService wallet = new Wallet(args[0], Integer.parseInt(args[1]));
 
         ResourceConfig config = new ResourceConfig();
         config.register(wallet);

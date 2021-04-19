@@ -13,14 +13,14 @@ import java.util.Scanner;
 
 public class DataBase {
 
-    private List<String> logs;
+    private final String filePath;
 
-    public DataBase() {
-        logs = getLogs();
+    public DataBase(String filePath) {
+        this.filePath = filePath;
     }
 
     public static void main(String[] args) {
-        DataBase db = new DataBase();
+        DataBase db = new DataBase("file");
         db.addLog("bla bla bla");
         db.addLog("log2");
         db.addLog("teste = sdcsf");
@@ -36,6 +36,7 @@ public class DataBase {
 
     private void writeData(String path, String data) {
         //Write JSON file
+        System.out.println("WRITING::: " + data);
         try (FileWriter file = new FileWriter(path)) {
             file.write(data);
             file.flush();
@@ -49,26 +50,45 @@ public class DataBase {
             Scanner scanner = new Scanner(new File(path));
             return scanner.useDelimiter("\\Z").next();
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            System.out.println(":::::::::::::::::Creating file");
+            File f = new File(path);
+            try {
+                f.createNewFile();
+                FileWriter w = new FileWriter(f);
+                w.write("[]");
+                w.close();
+            } catch (IOException ioException) {
+                ioException.printStackTrace();
+            }
+            return readData(path);
         }
-        return "";
     }
 
     public void addLog(String log) {
+        List<String> logs = getLogs();
         logs.add(log);
         Gson gson = new Gson();
         String jsonString = gson.toJson(logs);
-        writeData("src/resources/logs.json", jsonString);
+        writeData(filePath, jsonString);
     }
 
     public List<String> getLogs() {
-        String jsonString = readData("src/resources/logs.json");
-        ;
+        String jsonString = readData(filePath);
+
         Gson gson = new Gson();
         Type type = new TypeToken<List<String>>() {
         }.getType();
-        List<String> list = gson.fromJson(jsonString, type);
-        return list;
+        return gson.fromJson(jsonString, type);
+    }
+
+    public void clear() {
+        try {
+            FileWriter w = new FileWriter(filePath);
+            w.write("[]");
+            w.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }

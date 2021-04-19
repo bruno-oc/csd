@@ -74,7 +74,8 @@ public class WalletClient {
     public static void main(String[] args) {
         WalletClient w = new WalletClient();
         Scanner s = new Scanner(System.in);
-        String input;
+        String input, who, to;
+        double amount;
         help();
         do {
             System.out.print("> ");
@@ -82,21 +83,33 @@ public class WalletClient {
             String[] inputs = input.split(" ");
             switch (inputs[0]) {
                 case "1":
-                    double amount = Double.parseDouble(inputs[2]);
-                    w.obtainCoin(inputs[1], amount);
+                    System.out.print("who: ");
+                    who = s.nextLine();
+                    System.out.print("amount: ");
+                    amount = Double.parseDouble(s.nextLine());
+                    w.obtainCoin(who, amount);
                     break;
                 case "2":
-                    double amount1 = Double.parseDouble(inputs[3]);
-                    w.transferMoney(inputs[1], inputs[2], amount1);
+                    System.out.print("from: ");
+                    who = s.nextLine();
+                    System.out.print("to: ");
+                    to = s.nextLine();
+                    System.out.print("amount: ");
+                    amount = Double.parseDouble(s.nextLine());
+                    w.transferMoney(who, to, amount);
                     break;
                 case "3":
-                    w.currentAmount(inputs[1]);
+                    System.out.print("who: ");
+                    who = s.nextLine();
+                    w.currentAmount(who);
                     break;
                 case "4":
                     w.ledgerTransactions("");
                     break;
                 case "5":
-                    w.ledgerTransactions(inputs[1]);
+                    System.out.print("who: ");
+                    who = s.nextLine();
+                    w.ledgerTransactions(who);
                     break;
                 case "9":
                     help();

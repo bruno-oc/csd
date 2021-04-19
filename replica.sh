@@ -1,1 +1,1 @@
-java -cp target/WA-1-jar-with-dependencies.jar server.replica.BFTServer $@
+java -cp target/WA-1-jar-with-dependencies.jar server.replica.BFTServer src/server/replica/$@ 
