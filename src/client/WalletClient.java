@@ -30,8 +30,10 @@ public class WalletClient {
     public final static int REPLY_TIMEOUT = 6000;
 
     private static Client restClient;
+    private String serverURI;
 
-    public WalletClient() {
+    public WalletClient(String ip, String port) {
+    	serverURI = String.format("https://%s:%s/", ip, port);
         restClient = this.startClient();
     }
 
@@ -53,7 +55,7 @@ public class WalletClient {
         TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
         tmf.init(ts);
 
-        String protocol = "TLSv1.3";
+        String protocol = "TLSv1.2";
         SSLContext sslContext = SSLContext.getInstance(protocol);
 
         sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
@@ -72,7 +74,7 @@ public class WalletClient {
     }
 
     public static void main(String[] args) {
-        WalletClient w = new WalletClient();
+        WalletClient w = new WalletClient(args[0], args[1]);
         Scanner s = new Scanner(System.in);
         String input, who, to;
         double amount;
@@ -144,7 +146,7 @@ public class WalletClient {
 
     public void obtainCoin(String who, double amount) {
 
-        WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
+        WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         short retries = 0;
 
@@ -175,7 +177,7 @@ public class WalletClient {
     }
 
     public void transferMoney(String from, String to, double amount) {
-        WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
+        WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         short retries = 0;
 
@@ -206,7 +208,7 @@ public class WalletClient {
     }
 
     public void currentAmount(String who) {
-        WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
+        WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         short retries = 0;
 
@@ -236,7 +238,7 @@ public class WalletClient {
     }
 
     public void ledgerTransactions(String who) {
-        WebTarget target = restClient.target(CoinServer.ServerURI).path(WalletService.PATH);
+        WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         short retries = 0;
 
