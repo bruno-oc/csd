@@ -38,6 +38,7 @@ public class Wallet implements WalletService {
                 return -1;
             try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
                  ObjectInput objIn = new ObjectInputStream(byteIn)) {
+            	db.addLog("obtainCoins " + who + " " + amount);
                 return (double) objIn.readObject();
             }
 
@@ -67,6 +68,7 @@ public class Wallet implements WalletService {
                 return -1;
             try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
                  ObjectInput objIn = new ObjectInputStream(byteIn)) {
+            	db.addLog("transferMoney from " + from + " to " + to + " " + amount);
                 return (double) objIn.readObject();
             }
 
@@ -94,6 +96,7 @@ public class Wallet implements WalletService {
                 return -1;
             try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
                  ObjectInput objIn = new ObjectInputStream(byteIn)) {
+            	db.addLog("currentAmount " + who);
                 return (double) objIn.readObject();
             }
 
@@ -121,6 +124,7 @@ public class Wallet implements WalletService {
                 return new LinkedList<>();
             try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
                  ObjectInput objIn = new ObjectInputStream(byteIn)) {
+            	db.addLog("ledgerOfGlobalTransactions");
                 return (List<String>) objIn.readObject();
             }
 
@@ -149,6 +153,7 @@ public class Wallet implements WalletService {
                 return new LinkedList<>();
             try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
                  ObjectInput objIn = new ObjectInputStream(byteIn)) {
+            	db.addLog("ledgerOfClientTransactions " + who);
                 return (List<String>) objIn.readObject();
             }
 
