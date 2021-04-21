@@ -3,11 +3,16 @@ package server.replica;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
+import crypto.Message;
 import db.DataBase;
 
 import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
+
+import com.google.gson.Gson;
+
+import api.Transaction;
 
 public class BFTServer extends DefaultSingleRecoverable {
 
@@ -20,13 +25,14 @@ public class BFTServer extends DefaultSingleRecoverable {
 
     public static void main(String[] args) {
         if (args.length < 1) {
-            System.out.println("Usage: BFTServer <server id>");
+            System.out.println("Usage: BFTServer <filePath> <server id>");
             System.exit(-1);
         }
         new BFTServer(args[0], Integer.parseInt(args[1]));
     }
 
     private double clientAmount(String client) {
+    	//TODO: converter o file para List<Transaction> e iterar pelas op
         double total = 0;
         List<String> logs = db.getLogs();
         for (String log : logs) {
@@ -52,6 +58,7 @@ public class BFTServer extends DefaultSingleRecoverable {
         boolean hasReply = false;
         String client;
         double amount;
+        Message m;
         List<String> logs;
         try (ByteArrayInputStream byteIn = new ByteArrayInputStream(command);
              ObjectInput objIn = new ObjectInputStream(byteIn);
@@ -61,8 +68,11 @@ public class BFTServer extends DefaultSingleRecoverable {
             switch (reqType) {
                 case OBTAIN_COINS:
                     client = (String) objIn.readObject();
-                    amount = (double) objIn.readObject();
-                    db.addLog("obtainCoins " + client + " " + amount);
+                    m = (Message) objIn.readObject();
+                    List<byte[]> l = m.getMessage();
+                    Gson gson = new Gson();
+                    String jsonString = gson.toJson(new Transaction(new String(l.get(0)), new String(l.get(1)), l.get(2)));
+                    db.addLog(jsonString);
                     objOut.writeObject(clientAmount(client));
                     hasReply = true;
                     break;
