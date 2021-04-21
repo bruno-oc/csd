@@ -22,7 +22,7 @@ public interface WalletService {
     @Path("/obtain/{who}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-    double obtainCoins (@PathParam("who") String who, double amount);
+    double obtainCoins (@PathParam("who") String who, byte[] data);
 
     @POST
     @Path("/transfer/{from}")
