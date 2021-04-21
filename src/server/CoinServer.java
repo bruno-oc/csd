@@ -27,6 +27,11 @@ public class CoinServer {
     }
 
     public static void main(String[] args) throws Exception {
+    	
+    	if(args.length < 4) {
+    		System.out.println("Usage: CoinServer <filePath> <id> <ip> <port>");
+    		System.exit(-1);
+    	}
 
         /*
         String ip = InetAddress.getLocalHost().getHostAddress();
