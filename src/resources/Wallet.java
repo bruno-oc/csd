@@ -2,6 +2,8 @@ package resources;
 
 import api.rest.WalletService;
 import bftsmart.tom.ServiceProxy;
+import crypto.CryptoStuff;
+import crypto.Message;
 import db.DataBase;
 import server.replica.RequestType;
 
@@ -20,15 +22,26 @@ public class Wallet implements WalletService {
     }
 
     @Override
-    public double obtainCoins(String who, double amount) {
+    public double obtainCoins(String who, byte[] data) {
         System.out.println("obtainCoins");
+        
+        Message m = (Message) Message.deserialize(data);
+		List<byte[]> l = m.getMessage();
+		byte[] op = l.get(1);
+		byte[] signature = l.get(2);
+		
+		CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), op, signature);
 
+		String operation = new String(op);
+		
+		System.out.println("=> " + operation);
+		
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
-
+        	
             objOut.writeObject(RequestType.OBTAIN_COINS);
             objOut.writeObject(who);
-            objOut.writeObject(amount);
+            objOut.writeObject(m);
 
             objOut.flush();
             byteOut.flush();
@@ -38,7 +51,7 @@ public class Wallet implements WalletService {
                 return -1;
             try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
                  ObjectInput objIn = new ObjectInputStream(byteIn)) {
-            	db.addLog("obtainCoins " + who + " " + amount);
+            	db.addLog(operation);
                 return (double) objIn.readObject();
             }
 
