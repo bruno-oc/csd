@@ -1,27 +1,29 @@
 package api;
 
+import java.io.*;
+
 public class Transaction {
 	
-	private String from;
-	private String to;
-	private double amount;
+	private String id;
+	private String operation;
+	private byte[] sig;
 	
-	public Transaction(String from, String to, double amount) {
-		this.from = from;
-		this.to = to;
-		this.amount = amount;
+	public Transaction(String id, String operation, byte[] sig) {
+		this.id = id;
+		this.operation = operation;
+		this.sig = sig;
 	}
 	
-	public String getFrom() {
-		return from;
+	public String getID() {
+		return id;
 	}
 	
-	public String getTo() {
-		return to;
+	public String getOperation() {
+		return operation;
 	}
 	
-	public double getAmount() {
-		return amount;
+	public byte[] getSig() {
+		return sig;
 	}
 	
 }
