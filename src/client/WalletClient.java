@@ -1,12 +1,10 @@
 package client;
 
+import api.Transaction;
 import api.rest.WalletService;
 import crypto.CryptoStuff;
-import crypto.Message;
-
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
-import server.CoinServer;
 import server.InsecureHostnameVerifier;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -22,12 +20,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.FileInputStream;
-import java.security.Certificate;
-import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyStore;
-import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.util.Scanner;
 
 public class WalletClient {
@@ -38,11 +32,11 @@ public class WalletClient {
     public final static int REPLY_TIMEOUT = 6000;
 
     private static Client restClient;
-    private String serverURI;
-    private KeyPair clientKey;
+    private final String serverURI;
+    private final KeyPair clientKey;
 
     public WalletClient(String ip, String port) {
-    	serverURI = String.format("https://%s:%s/", ip, port);
+        serverURI = String.format("https://%s:%s/", ip, port);
         restClient = this.startClient();
         clientKey = CryptoStuff.getKeyPair();
     }
@@ -84,10 +78,10 @@ public class WalletClient {
     }
 
     public static void main(String[] args) {
-    	if(args.length < 2) {
-    		System.out.println("Usage: WalletClient <ip> <port>");
-    		System.exit(-1);
-    	}
+        if (args.length < 2) {
+            System.out.println("Usage: WalletClient <ip> <port>");
+            System.exit(-1);
+        }
         WalletClient w = new WalletClient(args[0], args[1]);
         Scanner s = new Scanner(System.in);
         String input, who, to;
@@ -157,31 +151,25 @@ public class WalletClient {
                 .hostnameVerifier(new InsecureHostnameVerifier())
                 .withConfig(config).build();
     }
-    
-    private byte[] getMessage(String who, String m) {
-    	// ID||Op||sign(op)
-    	byte[] id = who.getBytes();
-    	byte[] op = m.getBytes();
-    	byte[] signature;
-    	
-		try {
-			signature = CryptoStuff.sign(clientKey.getPrivate(), op);
-			Message output = new Message();
-	    	output.add(id);
-	    	output.add(op);
-	    	output.add(signature);
-	    	
-	    	return Message.serialize(output);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-    	return null;
+
+    private Transaction getSignedTranscation(String who, String m) {
+        // ID||Op||sign(op)
+        byte[] op = m.getBytes();
+        byte[] signature;
+
+        try {
+            signature = CryptoStuff.sign(clientKey.getPrivate(), op);
+            return new Transaction(who, m, signature);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public void obtainCoin(String who, double amount) {
-    	
-    	String m = String.format(Message.OBTAIN_COIN, who, amount);
-    	byte[] output = getMessage(who, m);
+
+        String m = String.format(Transaction.OBTAIN_COIN, who, amount);
+        Transaction output = getSignedTranscation(who, m);
 
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
@@ -191,13 +179,14 @@ public class WalletClient {
             try {
 
                 Response r = target.path("/obtain/" + who).request().accept(MediaType.APPLICATION_JSON)
-                        .post(Entity.entity(output, MediaType.APPLICATION_JSON));
+                        .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON_TYPE));
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
                     System.out.println(who + " balance: " + r.readEntity(Double.class));
                     return;
                 } else {
                     System.out.println("Error, HTTP error status: " + r.getStatus());
+                    retries++;
                 }
             } catch (ProcessingException pe) { // Error in communication with server
                 System.out.println("Timeout occurred.");
@@ -216,13 +205,18 @@ public class WalletClient {
     public void transferMoney(String from, String to, double amount) {
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
+        String m = String.format(Transaction.TRANSFER, from, to, amount);
+        Transaction output = getSignedTranscation(from, m);
+
+
         short retries = 0;
 
         while (retries < MAX_RETRIES) {
             try {
 
                 Response r = target.path("/transfer/" + from).queryParam("to", to).request()
-                        .accept(MediaType.APPLICATION_JSON).post(Entity.entity(amount, MediaType.APPLICATION_JSON));
+                        .accept(MediaType.APPLICATION_JSON)
+                        .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON));
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
                     System.out.println("from: " + from + " to: " + to + " amount: " + r.readEntity(Double.class));
