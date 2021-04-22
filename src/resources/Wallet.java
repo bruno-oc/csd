@@ -1,9 +1,9 @@
 package resources;
 
+import api.Transaction;
 import api.rest.WalletService;
 import bftsmart.tom.ServiceProxy;
 import crypto.CryptoStuff;
-import crypto.Message;
 import db.DataBase;
 import server.replica.RequestType;
 
@@ -23,55 +23,51 @@ public class Wallet implements WalletService {
 
     @Override
     public double obtainCoins(String who, byte[] data) {
-        System.out.println("obtainCoins");
-        
-        Message m = (Message) Message.deserialize(data);
-		List<byte[]> l = m.getMessage();
-		byte[] op = l.get(1);
-		byte[] signature = l.get(2);
-		
-		CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), op, signature);
+        try {
+            System.out.println("obtainCoins");
 
-		String operation = new String(op);
-		
-		System.out.println("=> " + operation);
-		
-        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
-        	
-            objOut.writeObject(RequestType.OBTAIN_COINS);
-            objOut.writeObject(who);
-            objOut.writeObject(m);
+            Transaction t = (Transaction) Transaction.deserialize(data);
+            CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
 
-            objOut.flush();
-            byteOut.flush();
+            try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+                 ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
-            byte[] reply = serviceProxy.invokeOrdered(byteOut.toByteArray());
-            if (reply.length == 0)
-                return -1;
-            try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
-                 ObjectInput objIn = new ObjectInputStream(byteIn)) {
-            	db.addLog(operation);
-                return (double) objIn.readObject();
+                objOut.writeObject(RequestType.OBTAIN_COINS);
+                objOut.writeObject(t);
+
+                objOut.flush();
+                byteOut.flush();
+
+                byte[] reply = serviceProxy.invokeOrdered(byteOut.toByteArray());
+                if (reply.length == 0)
+                    return -1;
+                try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
+                     ObjectInput objIn = new ObjectInputStream(byteIn)) {
+                    db.addLog(t);
+                    return (double) objIn.readObject();
+                }
+
+            } catch (IOException | ClassNotFoundException e) {
+                System.out.println("Exception: " + e.getMessage());
             }
-
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Exception: " + e.getMessage());
+        }catch (Exception e ) {
+            e.printStackTrace();
         }
         return -1;
     }
 
     @Override
-    public double transferMoney(String from, String to, double amount) {
+    public double transferMoney(String from, String to, byte[] data) {
         System.out.println("transferMoney");
+
+        Transaction t = (Transaction) Transaction.deserialize(data);
+        CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
             objOut.writeObject(RequestType.TRANSFER);
-            objOut.writeObject(from);
-            objOut.writeObject(to);
-            objOut.writeObject(amount);
+            objOut.writeObject(t);
 
             objOut.flush();
             byteOut.flush();
@@ -81,7 +77,7 @@ public class Wallet implements WalletService {
                 return -1;
             try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
                  ObjectInput objIn = new ObjectInputStream(byteIn)) {
-            	db.addLog("transferMoney from " + from + " to " + to + " " + amount);
+                //db.addLog("transferMoney from " + from + " to " + to + " " + amount);
                 return (double) objIn.readObject();
             }
 
@@ -95,11 +91,13 @@ public class Wallet implements WalletService {
     public double currentAmount(String who) {
         System.out.println("currentAmount");
 
+        Transaction t = new Transaction(who, String.format(Transaction.CURRENT_AMOUNT, who), null);
+
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
             objOut.writeObject(RequestType.CLIENT_AMOUNT);
-            objOut.writeObject(who);
+            objOut.writeObject(t);
 
             objOut.flush();
             byteOut.flush();
@@ -109,7 +107,7 @@ public class Wallet implements WalletService {
                 return -1;
             try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
                  ObjectInput objIn = new ObjectInputStream(byteIn)) {
-            	db.addLog("currentAmount " + who);
+                //db.addLog("currentAmount " + who);
                 return (double) objIn.readObject();
             }
 
@@ -121,13 +119,16 @@ public class Wallet implements WalletService {
 
     @SuppressWarnings("unchecked")
     @Override
-    public List<String> ledgerOfGlobalTransactions() {
+    public List<Transaction> ledgerOfGlobalTransactions() {
         System.out.println("ledgerOfGlobalTransactions");
+
+        Transaction t = new Transaction(null, Transaction.GET_ALL_TRANSCATIONS, null);
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
             objOut.writeObject(RequestType.GET_ALL);
+            objOut.writeObject(t);
 
             objOut.flush();
             byteOut.flush();
@@ -137,8 +138,8 @@ public class Wallet implements WalletService {
                 return new LinkedList<>();
             try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
                  ObjectInput objIn = new ObjectInputStream(byteIn)) {
-            	db.addLog("ledgerOfGlobalTransactions");
-                return (List<String>) objIn.readObject();
+                //db.addLog("ledgerOfGlobalTransactions");
+                return (List<Transaction>) objIn.readObject();
             }
 
         } catch (IOException | ClassNotFoundException e) {
@@ -149,14 +150,16 @@ public class Wallet implements WalletService {
 
     @SuppressWarnings("unchecked")
     @Override
-    public List<String> ledgerOfClientTransactions(String who) {
+    public List<Transaction> ledgerOfClientTransactions(String who) {
         System.out.println("ledgerOfClientTransactions");
+
+        Transaction t = new Transaction(who, String.format(Transaction.GET_USER_TRANSCATIONS, who), null);
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
             objOut.writeObject(RequestType.GET);
-            objOut.writeObject(who);
+            objOut.writeObject(t);
 
             objOut.flush();
             byteOut.flush();
@@ -166,8 +169,8 @@ public class Wallet implements WalletService {
                 return new LinkedList<>();
             try (ByteArrayInputStream byteIn = new ByteArrayInputStream(reply);
                  ObjectInput objIn = new ObjectInputStream(byteIn)) {
-            	db.addLog("ledgerOfClientTransactions " + who);
-                return (List<String>) objIn.readObject();
+                //db.addLog("ledgerOfClientTransactions " + who);
+                return (List<Transaction>) objIn.readObject();
             }
 
         } catch (IOException | ClassNotFoundException e) {
