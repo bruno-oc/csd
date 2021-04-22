@@ -1,18 +1,15 @@
 package server.replica;
 
+import api.Transaction;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
-import crypto.Message;
+import crypto.CryptoStuff;
 import db.DataBase;
 
 import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
-
-import com.google.gson.Gson;
-
-import api.Transaction;
 
 public class BFTServer extends DefaultSingleRecoverable {
 
@@ -32,10 +29,11 @@ public class BFTServer extends DefaultSingleRecoverable {
     }
 
     private double clientAmount(String client) {
-    	//TODO: converter o file para List<Transaction> e iterar pelas op
         double total = 0;
-        List<String> logs = db.getLogs();
-        for (String log : logs) {
+        List<Transaction> transactions = db.getLogs();
+        String log;
+        for (Transaction t : transactions) {
+            log = t.getOperation();
             if (log.contains(client) && (log.contains("obtainCoins") || log.contains("transferMoney"))) {
                 System.out.println("log=" + log);
                 String[] str = log.split(" ");
@@ -52,14 +50,58 @@ public class BFTServer extends DefaultSingleRecoverable {
         return total;
     }
 
+    private void writeTransaction(ObjectInput objIn, ObjectOutput objOut) {
+        try {
+            Transaction t = (Transaction) objIn.readObject();
+
+            CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+
+            db.addLog(t);
+            objOut.writeObject(clientAmount(t.getID()));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void getUserTransactions(ObjectInput objIn, ObjectOutput objOut) {
+        try {
+            Transaction t = (Transaction) objIn.readObject();
+            List<Transaction> logs = db.getLogs();
+            List<Transaction> clientLogs = new LinkedList<>();
+            for (Transaction log : logs)
+                if (log.contains(t.getID()))
+                    clientLogs.add(log);
+            db.addLog(t);
+            objOut.writeObject(clientLogs);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void getAllTransactions(ObjectInput objIn, ObjectOutput objOut) {
+        try {
+            List<Transaction> logs = db.getLogs();
+            db.addLog((Transaction) objIn.readObject());
+            objOut.writeObject(logs);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void getClientAmount(ObjectInput objIn, ObjectOutput objOut) {
+        try {
+            Transaction t = (Transaction) objIn.readObject();
+            db.addLog(t);
+            objOut.writeObject(clientAmount(t.getID()));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx) {
         byte[] reply = null;
         boolean hasReply = false;
-        String client;
-        double amount;
-        Message m;
-        List<String> logs;
         try (ByteArrayInputStream byteIn = new ByteArrayInputStream(command);
              ObjectInput objIn = new ObjectInputStream(byteIn);
              ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
@@ -67,44 +109,20 @@ public class BFTServer extends DefaultSingleRecoverable {
             RequestType reqType = (RequestType) objIn.readObject();
             switch (reqType) {
                 case OBTAIN_COINS:
-                    client = (String) objIn.readObject();
-                    m = (Message) objIn.readObject();
-                    List<byte[]> l = m.getMessage();
-                    Gson gson = new Gson();
-                    String jsonString = gson.toJson(new Transaction(new String(l.get(0)), new String(l.get(1)), l.get(2)));
-                    db.addLog(jsonString);
-                    objOut.writeObject(clientAmount(client));
-                    hasReply = true;
-                    break;
                 case TRANSFER:
-                    client = (String) objIn.readObject();
-                    String to = (String) objIn.readObject();
-                    amount = (double) objIn.readObject();
-                    db.addLog("transferMoney from " + client + " to " + to + " " + amount);
-                    objOut.writeObject(amount);
+                    writeTransaction(objIn, objOut);
                     hasReply = true;
                     break;
                 case CLIENT_AMOUNT:
-                    client = (String) objIn.readObject();
-                    db.addLog("currentAmount " + client);
-                    objOut.writeObject(clientAmount(client));
+                    getClientAmount(objIn, objOut);
                     hasReply = true;
                     break;
                 case GET:
-                    client = (String) objIn.readObject();
-                    logs = db.getLogs();
-                    List<String> clientLogs = new LinkedList<>();
-                    for (String log : logs)
-                        if (log.contains(client))
-                            clientLogs.add(log);
-                    db.addLog("ledgerOfClientTransactions " + client);
-                    objOut.writeObject(clientLogs);
+                    getUserTransactions(objIn, objOut);
                     hasReply = true;
                     break;
                 case GET_ALL:
-                    logs = db.getLogs();
-                    db.addLog("ledgerOfGlobalTransactions");
-                    objOut.writeObject(logs);
+                    getAllTransactions(objIn, objOut);
                     hasReply = true;
                     break;
             }
@@ -126,8 +144,6 @@ public class BFTServer extends DefaultSingleRecoverable {
     public byte[] appExecuteUnordered(byte[] command, MessageContext msgCtx) {
         byte[] reply = null;
         boolean hasReply = false;
-        String client;
-        List<String> logs;
         try (ByteArrayInputStream byteIn = new ByteArrayInputStream(command);
              ObjectInput objIn = new ObjectInputStream(byteIn);
              ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
@@ -135,26 +151,15 @@ public class BFTServer extends DefaultSingleRecoverable {
             RequestType reqType = (RequestType) objIn.readObject();
             switch (reqType) {
                 case CLIENT_AMOUNT:
-                    client = (String) objIn.readObject();
-                    db.addLog("currentAmount " + client);
-                    objOut.writeObject(clientAmount(client));
+                    getClientAmount(objIn, objOut);
                     hasReply = true;
                     break;
                 case GET:
-                    client = (String) objIn.readObject();
-                    logs = db.getLogs();
-                    List<String> clientLogs = new LinkedList<>();
-                    for (String log : logs)
-                        if (log.contains(client))
-                            clientLogs.add(log);
-                    db.addLog("ledgerOfClientTransactions " + client);
-                    objOut.writeObject(clientLogs);
+                    getUserTransactions(objIn, objOut);
                     hasReply = true;
                     break;
                 case GET_ALL:
-                    logs = db.getLogs();
-                    db.addLog("ledgerOfGlobalTransactions");
-                    objOut.writeObject(logs);
+                    getAllTransactions(objIn, objOut);
                     hasReply = true;
                     break;
             }
@@ -179,8 +184,8 @@ public class BFTServer extends DefaultSingleRecoverable {
         try (ByteArrayInputStream byteIn = new ByteArrayInputStream(state);
              ObjectInput objIn = new ObjectInputStream(byteIn)) {
             db.clear();
-            List<String> logs = (List<String>) objIn.readObject();
-            for(String log : logs)
+            List<Transaction> logs = (List<Transaction>) objIn.readObject();
+            for (Transaction log : logs)
                 db.addLog(log);
         } catch (IOException | ClassNotFoundException e) {
             System.out.println("Error while installing snapshot:\n" + e);
