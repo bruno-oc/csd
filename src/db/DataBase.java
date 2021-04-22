@@ -1,5 +1,6 @@
 package db;
 
+import api.Transaction;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -14,9 +15,11 @@ import java.util.Scanner;
 public class DataBase {
 
     private final String filePath;
+    private Gson gson;
 
     public DataBase(String filePath) {
         this.filePath = filePath;
+        gson = new Gson();
         File f = new File(filePath);
         if(!f.exists()) {
         	try {
@@ -52,19 +55,17 @@ public class DataBase {
         return "";
     }
 
-    public void addLog(String log) {
-        List<String> logs = getLogs();
+    public void addLog(Transaction log) {
+        List<Transaction> logs = getLogs();
         logs.add(log);
-        Gson gson = new Gson();
         String jsonString = gson.toJson(logs);
         writeData(filePath, jsonString);
     }
 
-    public List<String> getLogs() {
+    public List<Transaction> getLogs() {
         String jsonString = readData(filePath);
 
-        Gson gson = new Gson();
-        Type type = new TypeToken<List<String>>() {
+        Type type = new TypeToken<List<Transaction>>() {
         }.getType();
         return gson.fromJson(jsonString, type);
     }
