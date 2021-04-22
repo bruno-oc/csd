@@ -28,7 +28,7 @@ public interface WalletService {
     @Path("/transfer/{from}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-    double transferMoney (@PathParam("from") String from, @QueryParam("to") String to, double amount);
+    double transferMoney (@PathParam("from") String from, @QueryParam("to") String to, byte[] data);
 
     @GET
 	@Path("/{who}")
@@ -38,12 +38,12 @@ public interface WalletService {
     @GET
 	@Path("/transactions")
 	@Produces(MediaType.APPLICATION_JSON)
-    List<String> ledgerOfGlobalTransactions ();
+    List<Transaction> ledgerOfGlobalTransactions ();
 
     @GET
 	@Path("/transactions/{who}")
 	@Produces(MediaType.APPLICATION_JSON)
-    List<String> ledgerOfClientTransactions(@PathParam("who") String who);
+    List<Transaction> ledgerOfClientTransactions(@PathParam("who") String who);
     
     @POST
     @Path("/minerate/{who}")
