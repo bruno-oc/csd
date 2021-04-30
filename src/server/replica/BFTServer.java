@@ -2,6 +2,7 @@ package server.replica;
 
 import api.Transaction;
 import bftsmart.tom.MessageContext;
+import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import crypto.CryptoStuff;
@@ -14,10 +15,13 @@ import java.util.List;
 public class BFTServer extends DefaultSingleRecoverable {
 
     private final DataBase db;
+    private ServiceReplica replica;
 
     public BFTServer(String filePath, int id) {
         db = new DataBase(filePath);
-        new ServiceReplica(id, this, this);
+        replica = new ServiceReplica(id, this, this);
+        ReplicaContext context = replica.getReplicaContext();
+
     }
 
     public static void main(String[] args) {
@@ -98,6 +102,28 @@ public class BFTServer extends DefaultSingleRecoverable {
         }
     }
 
+    // isto envia os logs com os hashes
+    private void getHashedTransactions(ObjectInput objIn, ObjectOutput objOut) {
+        System.out.println("Getting hashes");
+        try {
+            byte[] hash;
+            List<Transaction> logs = db.getLogs();
+            for (Transaction t : logs) {
+                String id = t.getID();
+
+                // TODO: Create hash of operation
+                hash = "Operation hash".getBytes();
+                t.setHash(hash);
+                System.out.println(t);
+            }
+
+            db.addLog((Transaction) objIn.readObject());
+            objOut.writeObject(logs);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public byte[] appExecuteOrdered(byte[] command, MessageContext msgCtx) {
         byte[] reply = null;
@@ -123,6 +149,10 @@ public class BFTServer extends DefaultSingleRecoverable {
                     break;
                 case GET_ALL:
                     getAllTransactions(objIn, objOut);
+                    hasReply = true;
+                    break;
+                case GET_HASHED:
+                    getHashedTransactions(objIn, objOut);
                     hasReply = true;
                     break;
             }
@@ -160,6 +190,10 @@ public class BFTServer extends DefaultSingleRecoverable {
                     break;
                 case GET_ALL:
                     getAllTransactions(objIn, objOut);
+                    hasReply = true;
+                    break;
+                case GET_HASHED:
+                    getHashedTransactions(objIn, objOut);
                     hasReply = true;
                     break;
             }
