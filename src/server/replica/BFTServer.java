@@ -2,7 +2,6 @@ package server.replica;
 
 import api.Transaction;
 import bftsmart.tom.MessageContext;
-import bftsmart.tom.ReplicaContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import crypto.CryptoStuff;
@@ -15,13 +14,10 @@ import java.util.List;
 public class BFTServer extends DefaultSingleRecoverable {
 
     private final DataBase db;
-    private ServiceReplica replica;
 
     public BFTServer(String filePath, int id) {
         db = new DataBase(filePath);
-        replica = new ServiceReplica(id, this, this);
-        ReplicaContext context = replica.getReplicaContext();
-
+        new ServiceReplica(id, this, this);
     }
 
     public static void main(String[] args) {
@@ -96,29 +92,7 @@ public class BFTServer extends DefaultSingleRecoverable {
         try {
             Transaction t = (Transaction) objIn.readObject();
             db.addLog(t);
-            objOut.writeObject(clientAmount(t.getID()));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    // isto envia os logs com os hashes
-    private void getHashedTransactions(ObjectInput objIn, ObjectOutput objOut) {
-        System.out.println("Getting hashes");
-        try {
-            byte[] hash;
-            List<Transaction> logs = db.getLogs();
-            for (Transaction t : logs) {
-                String id = t.getID();
-
-                // TODO: Create hash of operation
-                hash = "Operation hash".getBytes();
-                t.setHash(hash);
-                System.out.println(t);
-            }
-
-            db.addLog((Transaction) objIn.readObject());
-            objOut.writeObject(logs);
+            objOut.writeObject(new Transaction("nao faz sentido", null, null));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -151,12 +125,9 @@ public class BFTServer extends DefaultSingleRecoverable {
                     getAllTransactions(objIn, objOut);
                     hasReply = true;
                     break;
-                case GET_HASHED:
-                    getHashedTransactions(objIn, objOut);
-                    hasReply = true;
-                    break;
             }
             if (hasReply) {
+            	System.out.println("ordered bft server");
                 objOut.flush();
                 byteOut.flush();
                 reply = byteOut.toByteArray();
@@ -181,6 +152,7 @@ public class BFTServer extends DefaultSingleRecoverable {
             RequestType reqType = (RequestType) objIn.readObject();
             switch (reqType) {
                 case CLIENT_AMOUNT:
+                	System.out.println("unordered CLIENT_AMOUNT");
                     getClientAmount(objIn, objOut);
                     hasReply = true;
                     break;
@@ -192,15 +164,13 @@ public class BFTServer extends DefaultSingleRecoverable {
                     getAllTransactions(objIn, objOut);
                     hasReply = true;
                     break;
-                case GET_HASHED:
-                    getHashedTransactions(objIn, objOut);
-                    hasReply = true;
-                    break;
             }
             if (hasReply) {
-                objOut.flush();
+            	System.out.println("unordered bft server");
+            	objOut.flush();
                 byteOut.flush();
                 reply = byteOut.toByteArray();
+                System.out.println(reply.length);
             } else {
                 reply = new byte[0];
             }
