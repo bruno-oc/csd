@@ -1,17 +1,13 @@
 package server;
 
-import api.Transaction;
-
-import java.util.Collection;
 import java.util.List;
 
 public class SystemReply {
     // complete response
-    private List<Transaction> reply;
-    //reply with hashes
-    private Collection<Object> hashes;
+    private byte[] reply;
+    private List<byte[]> hashes;
 
-    public SystemReply(List<Transaction> reply, Collection<Object> hashes) {
+    public SystemReply(byte[] reply, List<byte[]> hashes) {
         this.reply = reply;
         this.hashes = hashes;
     }
@@ -19,19 +15,19 @@ public class SystemReply {
     public SystemReply() {
     }
 
-    public List<Transaction> getReply() {
+    public byte[] getReply() {
         return reply;
     }
 
-    public void setReply(List<Transaction> reply) {
+    public void setReply(byte[] reply) {
         this.reply = reply;
     }
 
-    public Collection<Object> getHashes() {
+    public List<byte[]> getHashes() {
         return hashes;
     }
 
-    public void setHashes(Collection<Object> hashes) {
+    public void setHashes(List<byte[]> hashes) {
         this.hashes = hashes;
     }
 }

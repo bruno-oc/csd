@@ -9,69 +9,62 @@ import bftsmart.tom.core.messages.TOMMessage;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.Collections.synchronizedCollection;
 
 public class ReplyListenerImp implements ReplyListener {
+
     private final AsynchServiceProxy asyncSP;
 
-    private Collection<Transaction> replies;
-    private AtomicInteger repliesCounter;
+    private final Collection<byte[]> replies =
+            synchronizedCollection(new LinkedList<>());
+    private AtomicInteger repliesCounter = new AtomicInteger(0);
 
-    private boolean receivedFromThisReplica;
-    private List<Transaction> thisReplicaReply = null;
+    private boolean receivedFromThisReplica = false;
+    private byte[] thisReplicaReply;
 
-    private BlockingQueue<SystemReply> replyChain;
+    private final BlockingQueue<SystemReply> replyChain;
 
     public ReplyListenerImp(BlockingQueue<SystemReply> replyChain, AsynchServiceProxy asyncSP) {
         this.replyChain = replyChain;
         this.asyncSP = asyncSP;
-
+        
+        replies.clear();
         repliesCounter = new AtomicInteger(0);
-        replies = synchronizedCollection(new LinkedList<>());
-        receivedFromThisReplica = false;
     }
 
     @Override
-    public void reset() {
-        repliesCounter = new AtomicInteger(0);
-        replyChain = new LinkedBlockingDeque<>();
-        replies = synchronizedCollection(new LinkedList<>());
-        receivedFromThisReplica = false;
-    }
-
-    @Override
-    public void replyReceived(RequestContext context, TOMMessage reply) {
-        System.out.println("Reply received form: " + reply.getSender());
-
-        recordReply(reply);
-        if (reply.getSender() == asyncSP.getProcessId())
+    public void replyReceived(RequestContext requestContext, TOMMessage msg) {
+    	System.out.println("==> " + msg.getContent().length);
+    	recordReply(msg);
+        if (msg.getSender() == asyncSP.getProcessId())
             receivedFromThisReplica = true;
+
+        System.out.println(hasValidQuorum());
         if (hasValidQuorum())
-            deliverReply(context);
+            deliverReply(requestContext);
     }
 
     private void recordReply(TOMMessage msg) {
-
-        // TODO: Receive the transactions with hashes list
-        // TODO: esta a dar erro aqui
-        List<Transaction> logs = (List<Transaction>) msg.getContent();
-        replies.addAll(logs);
-
+    	System.out.println("replylistner =>> " + msg.getContent().length);
+        System.out.println("ReplyListener: invoked replyReceived " + msg.getSender());
+        ReplyParser parser = new ReplyParser(msg.getContent());
+        replies.add(msg.getContent());
         if (asyncSP.getProcessId() == msg.getSender())
-            thisReplicaReply = logs;
-
+            thisReplicaReply = parser.getReply();
     }
 
-    private boolean hasValidQuorum() {  // tratar para ver se já temos o quorum que queremos  controlar
+    private boolean hasValidQuorum() {
         double quorum = (Math.ceil((double) (asyncSP.getViewManager().getCurrentViewN() + //4
                 asyncSP.getViewManager().getCurrentViewF() + 1) / 2.0));
-        return repliesCounter.incrementAndGet() >= quorum && receivedFromThisReplica;
-
+        repliesCounter.incrementAndGet();
+        System.out.println((repliesCounter.get() >= quorum) + " && " + (receivedFromThisReplica));
+        return repliesCounter.get() >= quorum && receivedFromThisReplica;
     }
 
     private void deliverReply(RequestContext requestContext) {
@@ -79,4 +72,11 @@ public class ReplyListenerImp implements ReplyListener {
         replyChain.add(new SystemReply(thisReplicaReply, new ArrayList<>(replies)));
         asyncSP.cleanAsynchRequest(requestContext.getOperationId());
     }
+
+	@Override
+	public void reset() {
+		// TODO Auto-generated method stub
+		
+	}
+
 }
