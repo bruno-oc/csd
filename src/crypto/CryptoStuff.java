@@ -57,7 +57,6 @@ public class CryptoStuff {
     	} catch(Exception e) {
     		e.printStackTrace();
     	}
-    	
     }
 
 }

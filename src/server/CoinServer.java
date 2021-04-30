@@ -6,13 +6,9 @@ import org.glassfish.jersey.server.ResourceConfig;
 import resources.Wallet;
 
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
-import java.io.FileInputStream;
 import java.net.InetAddress;
 import java.net.URI;
-import java.security.KeyStore;
 import java.util.logging.Logger;
 
 public class CoinServer {
@@ -27,17 +23,17 @@ public class CoinServer {
     }
 
     public static void main(String[] args) throws Exception {
-    	
-    	if(args.length < 4) {
-    		System.out.println("Usage: CoinServer <filePath> <id> <ip> <port>");
-    		System.exit(-1);
-    	}
+
+        if (args.length < 4) {
+            System.out.println("Usage: CoinServer <filePath> <id> <ip> <port>");
+            System.exit(-1);
+        }
 
         /*
         String ip = InetAddress.getLocalHost().getHostAddress();
 		*/
         String serverURI = String.format("https://%s:%s/", args[2], args[3]);
-        
+
         HttpsURLConnection.setDefaultHostnameVerifier(new InsecureHostnameVerifier());
 
         WalletService wallet = new Wallet(args[0], Integer.parseInt(args[1]));
