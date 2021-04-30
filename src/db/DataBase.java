@@ -36,7 +36,6 @@ public class DataBase {
 
     private void writeData(String path, String data) {
         //Write JSON file
-        System.out.println("WRITING::: " + data);
         try (FileWriter file = new FileWriter(path)) {
             file.write(data);
             file.flush();
