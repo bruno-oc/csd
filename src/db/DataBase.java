@@ -1,8 +1,10 @@
 package db;
 
-import api.Transaction;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+
+import api.Transaction;
+import server.SystemReply;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -55,15 +57,30 @@ public class DataBase {
     }
 
     public void addLog(Transaction log) {
-        List<Transaction> logs = getLogs();
+        List<Transaction> logs = getLogsTransactions();
         logs.add(log);
         String jsonString = gson.toJson(logs);
         writeData(filePath, jsonString);
     }
 
-    public List<Transaction> getLogs() {
+    public List<Transaction> getLogsTransactions() {
         String jsonString = readData(filePath);
-
+        
+        Type type = new TypeToken<List<Transaction>>() {
+        }.getType();
+        return gson.fromJson(jsonString, type);
+    }
+    
+    public void addLog(SystemReply log) {
+        List<SystemReply> logs = getLogsSystemReply();
+        logs.add(log);
+        String jsonString = gson.toJson(logs);
+        writeData(filePath, jsonString);
+    }
+    
+    public List<SystemReply> getLogsSystemReply() {
+        String jsonString = readData(filePath);
+        
         Type type = new TypeToken<List<Transaction>>() {
         }.getType();
         return gson.fromJson(jsonString, type);
