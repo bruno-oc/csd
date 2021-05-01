@@ -18,7 +18,8 @@ public class BFTServer extends DefaultSingleRecoverable {
     private final DataBase db;
     private final int id;
 
-    public BFTServer(String filePath, int id) {
+    public BFTServer(int id) {
+    	String filePath = "src/server/replica/bft_log" + id + ".json";
         db = new DataBase(filePath);
         this.id = id;
         new ServiceReplica(id, this, this);
@@ -26,29 +27,20 @@ public class BFTServer extends DefaultSingleRecoverable {
 
     public static void main(String[] args) {
         if (args.length < 1) {
-            System.out.println("Usage: BFTServer <filePath> <server id>");
+            System.out.println("Usage: BFTServer <server id>");
             System.exit(-1);
         }
-        new BFTServer(args[0], Integer.parseInt(args[1]));
-    }
-
-    private boolean containsUser(String log, String user) {
-        String[] words = log.split(" ");
-        for (String w : words)
-            if (w.equals(user))
-                return true;
-        return false;
+        new BFTServer(Integer.parseInt(args[0]));
     }
 
     private double clientAmount(String client) {
         double total = 0;
-        List<Transaction> transactions = db.getLogs();
+        List<Transaction> transactions = db.getLogsTransactions();
         String log;
         for (Transaction t : transactions) {
             log = t.getOperation();
             if (Arrays.stream(log.split(" ")).anyMatch(client::equals)
                     && (log.contains("obtainCoins") || log.contains("transferMoney"))) {
-                System.out.println("log=" + log);
                 String[] str = log.split(" ");
                 double temp = Double.parseDouble(str[str.length - 1]);
 
@@ -66,11 +58,12 @@ public class BFTServer extends DefaultSingleRecoverable {
     private void writeTransaction(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Transaction t = (Transaction) objIn.readObject();
+            String client = (String) objIn.readObject();
 
             CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
 
             db.addLog(t);
-            double val = clientAmount(t.getID());
+            double val = clientAmount(client);
             ReplicaReply reply = new ReplicaReply(id, t.getOperation(), val,
                     TOMUtil.computeHash(t.getOperation().getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
@@ -83,10 +76,13 @@ public class BFTServer extends DefaultSingleRecoverable {
     private void getUserTransactions(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Transaction t = (Transaction) objIn.readObject();
+            String client = (String) objIn.readObject();
+            
+            CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
 
-            List<Transaction> logs = db.getLogs(), clientLogs = new LinkedList<>();
+            List<Transaction> logs = db.getLogsTransactions(), clientLogs = new LinkedList<>();
             for (Transaction log : logs)
-                if (Arrays.stream(log.getOperation().split(" ")).anyMatch(t.getID()::equals))
+                if (Arrays.stream(log.getOperation().split(" ")).anyMatch(client::equals))
                     clientLogs.add(log);
             db.addLog(t);
 
@@ -103,8 +99,10 @@ public class BFTServer extends DefaultSingleRecoverable {
     private void getAllTransactions(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Transaction t = (Transaction) objIn.readObject();
+            
+            CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
 
-            List<Transaction> logs = db.getLogs();
+            List<Transaction> logs = db.getLogsTransactions();
             db.addLog(t);
 
             ReplicaReply reply = new ReplicaReply(id, t.getOperation(), logs,
@@ -120,8 +118,12 @@ public class BFTServer extends DefaultSingleRecoverable {
     private void getClientAmount(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Transaction t = (Transaction) objIn.readObject();
+            String client = (String) objIn.readObject();
+            
+            CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+            
             db.addLog(t);
-            double val = clientAmount(t.getID());
+            double val = clientAmount(client);
             ReplicaReply reply = new ReplicaReply(id, t.getOperation(), val,
                     TOMUtil.computeHash(t.getOperation().getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
@@ -160,7 +162,6 @@ public class BFTServer extends DefaultSingleRecoverable {
                     break;
             }
             if (hasReply) {
-                System.out.println("ordered bft server");
                 objOut.flush();
                 byteOut.flush();
                 reply = byteOut.toByteArray();
@@ -185,7 +186,6 @@ public class BFTServer extends DefaultSingleRecoverable {
             RequestType reqType = (RequestType) objIn.readObject();
             switch (reqType) {
                 case CLIENT_AMOUNT:
-                    System.out.println("unordered CLIENT_AMOUNT");
                     getClientAmount(objIn, objOut);
                     hasReply = true;
                     break;
@@ -199,11 +199,9 @@ public class BFTServer extends DefaultSingleRecoverable {
                     break;
             }
             if (hasReply) {
-                System.out.println("unordered bft server");
                 objOut.flush();
                 byteOut.flush();
                 reply = byteOut.toByteArray();
-                System.out.println(reply.length);
             } else {
                 reply = new byte[0];
             }
@@ -217,7 +215,7 @@ public class BFTServer extends DefaultSingleRecoverable {
     @SuppressWarnings("unchecked")
     @Override
     public void installSnapshot(byte[] state) {
-        System.out.println("-----------------------------ERRO------------------------------");
+        System.out.println("-----------------------------ERROR------------------------------");
         try (ByteArrayInputStream byteIn = new ByteArrayInputStream(state);
              ObjectInput objIn = new ObjectInputStream(byteIn)) {
             db.clear();
@@ -234,7 +232,7 @@ public class BFTServer extends DefaultSingleRecoverable {
         System.out.println("-----------------------------GET------------------------------");
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut)) {
-            objOut.writeObject(db.getLogs());
+            objOut.writeObject(db.getLogsTransactions());
             return byteOut.toByteArray();
         } catch (IOException e) {
             System.out.println("Error while taking snapshot:\n" + e);
