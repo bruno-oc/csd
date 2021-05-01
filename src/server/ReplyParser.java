@@ -1,37 +1,34 @@
 package server;
 
+import server.replica.ReplicaReply;
+
 import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectInputStream;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
-import api.Transaction;
-
-public class ReplyParser{
-    private byte[] reply;
+public class ReplyParser {
+    private ReplicaReply reply;
     private byte[] signedReply;
 
     public ReplyParser(byte[] fullReply) {
-    	System.out.println("======ReplyParser======");
-    	
-    	reply = fullReply;
+        System.out.println("======ReplyParser======");
 
-        /*try (ByteArrayInputStream byteIn = new ByteArrayInputStream(fullReply);
-                ObjectInput objIn = new ObjectInputStream(byteIn)) {
+        //reply = fullReply;
 
-            Transaction t = (Transaction) objIn.readObject();
-            System.out.println(t.getID());
+        try (ByteArrayInputStream byteIn = new ByteArrayInputStream(fullReply);
+             ObjectInput objIn = new ObjectInputStream(byteIn)) {
+
+            reply = (ReplicaReply) objIn.readObject();
+            /*Transaction t = (Transaction) objIn.readObject();
+            System.out.println(t.getID());*/
 
         } catch (Exception e) {
             e.printStackTrace();
-        }*/
+        }
 
     }
 
-    public byte[] getReply() {
+    public ReplicaReply getReply() {
         return reply;
     }
 

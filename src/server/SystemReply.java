@@ -1,33 +1,28 @@
 package server;
 
+import server.replica.ReplicaReply;
+
+import java.io.Serializable;
 import java.util.List;
 
-public class SystemReply {
-    // complete response
-    private byte[] reply;
-    private List<byte[]> hashes;
+public class SystemReply implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-    public SystemReply(byte[] reply, List<byte[]> hashes) {
-        this.reply = reply;
-        this.hashes = hashes;
+    private List<ReplicaReply> replies;
+
+    public SystemReply(){
+
     }
 
-    public SystemReply() {
+    public SystemReply(List<ReplicaReply> replies) {
+        this.replies = replies;
     }
 
-    public byte[] getReply() {
-        return reply;
+    public List<ReplicaReply> getReplies() {
+        return replies;
     }
 
-    public void setReply(byte[] reply) {
-        this.reply = reply;
-    }
-
-    public List<byte[]> getHashes() {
-        return hashes;
-    }
-
-    public void setHashes(List<byte[]> hashes) {
-        this.hashes = hashes;
+    public void setReplies(List<ReplicaReply> replies) {
+        this.replies = replies;
     }
 }
