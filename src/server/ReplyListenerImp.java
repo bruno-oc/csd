@@ -22,7 +22,6 @@ public class ReplyListenerImp implements ReplyListener {
             synchronizedCollection(new LinkedList<>());
     private final BlockingQueue<SystemReply> replyChain;
     private AtomicInteger repliesCounter = new AtomicInteger(0);
-    private boolean receivedFromThisReplica = false;
 
     public ReplyListenerImp(BlockingQueue<SystemReply> replyChain, AsynchServiceProxy asyncSP) {
         this.replyChain = replyChain;
@@ -39,19 +38,14 @@ public class ReplyListenerImp implements ReplyListener {
 
     @Override
     public void replyReceived(RequestContext requestContext, TOMMessage msg) {
-        System.out.println("==> " + msg.getContent().length);
         recordReply(msg);
-        if (msg.getSender() == asyncSP.getProcessId())
-            receivedFromThisReplica = true;
-
-        System.out.println(hasValidQuorum());
+        
         if (hasValidQuorum())
             deliverReply(requestContext);
     }
 
     private void recordReply(TOMMessage msg) {
-        System.out.println("replylistner =>> " + msg.getContent().length);
-        System.out.println("ReplyListener: invoked replyReceived " + msg.getSender());
+        System.out.println("ReplyListener: invoked replyReceived sender=" + msg.getSender());
         ReplyParser parser = new ReplyParser(msg.getContent());
         replies.add(parser.getReply());
     }
@@ -60,8 +54,7 @@ public class ReplyListenerImp implements ReplyListener {
         double quorum = (Math.ceil((double) (asyncSP.getViewManager().getCurrentViewN() + //4
                 asyncSP.getViewManager().getCurrentViewF() + 1) / 2.0));
         repliesCounter.incrementAndGet();
-        System.out.println((repliesCounter.get() >= quorum) + " && " + (receivedFromThisReplica));
-        return repliesCounter.get() >= quorum && receivedFromThisReplica;
+        return repliesCounter.get() >= quorum;
     }
 
     private void deliverReply(RequestContext requestContext) {
