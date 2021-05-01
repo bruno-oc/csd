@@ -3,6 +3,8 @@ package client;
 import api.Transaction;
 import api.rest.WalletService;
 import crypto.CryptoStuff;
+import db.DataBase;
+
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import server.InsecureHostnameVerifier;
@@ -35,11 +37,17 @@ public class WalletClient {
     private static Client restClient;
     private final String serverURI;
     private final KeyPair clientKey;
+    private static String clientId;
+    
+    private DataBase db;
 
     public WalletClient(String ip, String port) {
         serverURI = String.format("https://%s:%s/", ip, port);
         restClient = this.startClient();
         clientKey = CryptoStuff.getKeyPair();
+        
+        String filePath = "src/client/client_log.json";
+        db = new DataBase(filePath);
     }
 
     private static SSLContext getContext() throws Exception {
@@ -79,11 +87,12 @@ public class WalletClient {
     }
 
     public static void main(String[] args) {
-        if (args.length < 2) {
-            System.out.println("Usage: WalletClient <ip> <port>");
+        if (args.length < 3) {
+            System.out.println("Usage: WalletClient <ip> <port> <clientId>");
             System.exit(-1);
         }
         WalletClient w = new WalletClient(args[0], args[1]);
+        clientId = args[2];
         Scanner s = new Scanner(System.in);
         String input, who, to;
         double amount;
@@ -153,14 +162,14 @@ public class WalletClient {
                 .withConfig(config).build();
     }
 
-    private Transaction getSignedTranscation(String who, String m) {
+    private Transaction getSignedTranscation(String m) {
         // ID||Op||sign(op)
         byte[] op = m.getBytes();
         byte[] signature;
 
         try {
             signature = CryptoStuff.sign(clientKey.getPrivate(), op);
-            return new Transaction(who, m, signature);
+            return new Transaction(clientId, m, signature);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -170,7 +179,7 @@ public class WalletClient {
     public void obtainCoin(String who, double amount) {
 
         String m = String.format(Transaction.OBTAIN_COIN, who, amount);
-        Transaction output = getSignedTranscation(who, m);
+        Transaction output = getSignedTranscation(m);
 
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
@@ -184,6 +193,7 @@ public class WalletClient {
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
                     SystemReply reply = r.readEntity(SystemReply.class);
+                    db.addLog(reply);
                     System.out.println(who + " balance: " + reply.getReplies().get(0).getValue());
                     return;
                 } else {
@@ -208,7 +218,7 @@ public class WalletClient {
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         String m = String.format(Transaction.TRANSFER, from, to, amount);
-        Transaction output = getSignedTranscation(from, m);
+        Transaction output = getSignedTranscation(m);
 
 
         short retries = 0;
@@ -222,7 +232,8 @@ public class WalletClient {
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
                     SystemReply reply = r.readEntity(SystemReply.class);
-                    System.out.println("from: " + from + " to: " + to + " amount: " + reply.getReplies().get(0).getValue());
+                    db.addLog(reply);
+                    System.out.println("from: " + from + " to: " + to + " amount: " + amount);
                     return;
                 } else {
                     System.out.println("Error, HTTP error status: " + r.getStatus());
@@ -242,6 +253,10 @@ public class WalletClient {
     }
 
     public void currentAmount(String who) {
+    	
+    	String m = String.format(Transaction.CURRENT_AMOUNT, who);
+        Transaction output = getSignedTranscation(m);
+    	
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         short retries = 0;
@@ -249,10 +264,12 @@ public class WalletClient {
         while (retries < MAX_RETRIES) {
             try {
 
-                Response r = target.path("/" + who + "/").request().accept(MediaType.APPLICATION_JSON).get();
-
+            	Response r = target.path(who).request().accept(MediaType.APPLICATION_JSON)
+                        .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON));
+            	
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
                     SystemReply reply = r.readEntity(SystemReply.class);
+                    db.addLog(reply);
                     System.out.println("balance: " + (double) reply.getReplies().get(0).getValue());
                     return;
                 } else {
@@ -274,17 +291,26 @@ public class WalletClient {
     }
 
     public void ledgerTransactions(String who) {
+    	
+    	String  m;
+    	if(who.equals(""))
+    		m = String.format(Transaction.GET_ALL_TRANSCATIONS);
+    	else
+    		m = String.format(Transaction.GET_USER_TRANSCATIONS, who);
+        Transaction output = getSignedTranscation(m);
+    	
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         short retries = 0;
 
         while (retries < MAX_RETRIES) {
             try {
-
-                Response r = target.path("/transactions/" + who).request().accept(MediaType.APPLICATION_JSON).get();
+            	Response r = target.path("/transactions/" + who).request().accept(MediaType.APPLICATION_JSON)
+                        .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON_TYPE));
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
                     SystemReply reply = r.readEntity(SystemReply.class);
+                    db.addLog(reply);
                     System.out.println(reply.getReplies().get(0).getValue());
                     return;
                 } else {
