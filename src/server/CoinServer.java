@@ -24,19 +24,19 @@ public class CoinServer {
 
     public static void main(String[] args) throws Exception {
 
-        if (args.length < 4) {
-            System.out.println("Usage: CoinServer <filePath> <id> <ip> <port>");
+        if (args.length < 3) {
+            System.out.println("Usage: CoinServer <id> <ip> <port>");
             System.exit(-1);
         }
 
         /*
         String ip = InetAddress.getLocalHost().getHostAddress();
 		*/
-        String serverURI = String.format("https://%s:%s/", args[2], args[3]);
+        String serverURI = String.format("https://%s:%s/", args[1], args[2]);
 
         HttpsURLConnection.setDefaultHostnameVerifier(new InsecureHostnameVerifier());
 
-        WalletService wallet = new Wallet(args[0], Integer.parseInt(args[1]));
+        WalletService wallet = new Wallet(Integer.parseInt(args[0]));
 
         ResourceConfig config = new ResourceConfig();
         config.register(wallet);
