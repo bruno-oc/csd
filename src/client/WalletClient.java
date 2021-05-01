@@ -6,6 +6,7 @@ import crypto.CryptoStuff;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import server.InsecureHostnameVerifier;
+import server.SystemReply;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
@@ -182,7 +183,8 @@ public class WalletClient {
                         .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON_TYPE));
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
-                    System.out.println(who + " balance: " + r.readEntity(Double.class));
+                    SystemReply reply = r.readEntity(SystemReply.class);
+                    System.out.println(who + " balance: " + reply.getReplies().get(0).getValue());
                     return;
                 } else {
                     System.out.println("Error, HTTP error status: " + r.getStatus());
@@ -219,7 +221,8 @@ public class WalletClient {
                         .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON));
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
-                    System.out.println("from: " + from + " to: " + to + " amount: " + r.readEntity(Double.class));
+                    SystemReply reply = r.readEntity(SystemReply.class);
+                    System.out.println("from: " + from + " to: " + to + " amount: " + reply.getReplies().get(0).getValue());
                     return;
                 } else {
                     System.out.println("Error, HTTP error status: " + r.getStatus());
@@ -249,14 +252,16 @@ public class WalletClient {
                 Response r = target.path("/" + who + "/").request().accept(MediaType.APPLICATION_JSON).get();
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
-                    System.out.println("balance: " + r.readEntity(Double.class));
+                    SystemReply reply = r.readEntity(SystemReply.class);
+                    System.out.println("balance: " + (double) reply.getReplies().get(0).getValue());
                     return;
                 } else {
                     System.out.println("Error, HTTP error status: " + r.getStatus());
                 }
             } catch (ProcessingException pe) { // Error in communication with server
                 System.out.println("Timeout occurred.");
-                System.out.println(pe.getMessage()); // Could be removed
+                //System.out.println(pe.getMessage()); // Could be removed
+                pe.printStackTrace();
                 retries++;
                 try {
                     Thread.sleep(RETRY_PERIOD); // wait until attempting again.
@@ -279,7 +284,8 @@ public class WalletClient {
                 Response r = target.path("/transactions/" + who).request().accept(MediaType.APPLICATION_JSON).get();
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
-                    System.out.println(r.readEntity(String.class));
+                    SystemReply reply = r.readEntity(SystemReply.class);
+                    System.out.println(reply.getReplies().get(0).getValue());
                     return;
                 } else {
                     System.out.println("Error, HTTP error status: " + r.getStatus());
