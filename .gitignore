@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+bin/
+src/server/*.json
+src/server/replica/*.json
