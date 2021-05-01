@@ -31,20 +31,23 @@ public interface WalletService {
 	@Produces(MediaType.APPLICATION_JSON)
     SystemReply transferMoney (@PathParam("from") String from, @QueryParam("to") String to, byte[] data);
 
-    @GET
+    @POST
 	@Path("/{who}")
+    @Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-    SystemReply currentAmount (@PathParam("who") String who);
+    SystemReply currentAmount (@PathParam("who") String who, byte[] data);
 
-    @GET
+    @POST
 	@Path("/transactions")
+    @Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-    SystemReply ledgerOfGlobalTransactions ();
+    SystemReply ledgerOfGlobalTransactions (byte[] data);
 
-    @GET
+    @POST
 	@Path("/transactions/{who}")
+    @Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-    SystemReply ledgerOfClientTransactions(@PathParam("who") String who);
+    SystemReply ledgerOfClientTransactions(@PathParam("who") String who, byte[] data);
     
     @POST
     @Path("/minerate/{who}")
