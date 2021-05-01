@@ -1,7 +1,6 @@
 package api;
 
 import java.io.*;
-import java.util.Arrays;
 
 public class Transaction implements Serializable {
 
@@ -16,7 +15,6 @@ public class Transaction implements Serializable {
     private String id;
     private String operation;
     private byte[] sig;
-    private byte[] hash;
 
     public Transaction(String id, String operation, byte[] sig) {
         this.id = id;
@@ -63,21 +61,12 @@ public class Transaction implements Serializable {
         return operation.contains(user);
     }
 
-    public byte[] getHash() {
-        return hash;
-    }
-
-    public void setHash(byte[] hash) {
-        this.hash = hash;
-    }
-
     @Override
     public String toString() {
         return "Transaction{" +
                 "id='" + id + '\'' +
                 ", operation='" + operation + '\'' +
-                ", sig={" + operation + "}Kpriv" + '\'' +
-                ", hash=" + new String(hash) +
+                ", sig=" + (sig != null ? sig.length : "none") +
                 '}';
     }
 }
