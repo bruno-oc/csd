@@ -34,4 +34,5 @@ build/
 
 bin/
 src/server/*.json
+src/client/*.json
 src/server/replica/*.json
