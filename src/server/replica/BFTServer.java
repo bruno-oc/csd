@@ -4,19 +4,23 @@ import api.Transaction;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
+import bftsmart.tom.util.TOMUtil;
 import crypto.CryptoStuff;
 import db.DataBase;
 
 import java.io.*;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
 public class BFTServer extends DefaultSingleRecoverable {
 
     private final DataBase db;
+    private final int id;
 
     public BFTServer(String filePath, int id) {
         db = new DataBase(filePath);
+        this.id = id;
         new ServiceReplica(id, this, this);
     }
 
@@ -28,13 +32,22 @@ public class BFTServer extends DefaultSingleRecoverable {
         new BFTServer(args[0], Integer.parseInt(args[1]));
     }
 
+    private boolean containsUser(String log, String user) {
+        String[] words = log.split(" ");
+        for (String w : words)
+            if (w.equals(user))
+                return true;
+        return false;
+    }
+
     private double clientAmount(String client) {
         double total = 0;
         List<Transaction> transactions = db.getLogs();
         String log;
         for (Transaction t : transactions) {
             log = t.getOperation();
-            if (log.contains(client) && (log.contains("obtainCoins") || log.contains("transferMoney"))) {
+            if (Arrays.stream(log.split(" ")).anyMatch(client::equals)
+                    && (log.contains("obtainCoins") || log.contains("transferMoney"))) {
                 System.out.println("log=" + log);
                 String[] str = log.split(" ");
                 double temp = Double.parseDouble(str[str.length - 1]);
@@ -57,7 +70,11 @@ public class BFTServer extends DefaultSingleRecoverable {
             CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
 
             db.addLog(t);
-            objOut.writeObject(clientAmount(t.getID()));
+            double val = clientAmount(t.getID());
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), val,
+                    TOMUtil.computeHash(t.getOperation().getBytes()),
+                    TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
+            objOut.writeObject(reply);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -66,13 +83,18 @@ public class BFTServer extends DefaultSingleRecoverable {
     private void getUserTransactions(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Transaction t = (Transaction) objIn.readObject();
-            List<Transaction> logs = db.getLogs();
-            List<Transaction> clientLogs = new LinkedList<>();
+
+            List<Transaction> logs = db.getLogs(), clientLogs = new LinkedList<>();
             for (Transaction log : logs)
-                if (log.contains(t.getID()))
+                if (Arrays.stream(log.getOperation().split(" ")).anyMatch(t.getID()::equals))
                     clientLogs.add(log);
             db.addLog(t);
-            objOut.writeObject(clientLogs);
+
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), clientLogs,
+                    TOMUtil.computeHash(t.getOperation().getBytes()),
+                    TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
+
+            objOut.writeObject(reply);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -80,9 +102,16 @@ public class BFTServer extends DefaultSingleRecoverable {
 
     private void getAllTransactions(ObjectInput objIn, ObjectOutput objOut) {
         try {
+            Transaction t = (Transaction) objIn.readObject();
+
             List<Transaction> logs = db.getLogs();
-            db.addLog((Transaction) objIn.readObject());
-            objOut.writeObject(logs);
+            db.addLog(t);
+
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), logs,
+                    TOMUtil.computeHash(t.getOperation().getBytes()),
+                    TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
+
+            objOut.writeObject(reply);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -92,7 +121,11 @@ public class BFTServer extends DefaultSingleRecoverable {
         try {
             Transaction t = (Transaction) objIn.readObject();
             db.addLog(t);
-            objOut.writeObject(new Transaction("nao faz sentido", null, null));
+            double val = clientAmount(t.getID());
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), val,
+                    TOMUtil.computeHash(t.getOperation().getBytes()),
+                    TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
+            objOut.writeObject(reply);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -127,7 +160,7 @@ public class BFTServer extends DefaultSingleRecoverable {
                     break;
             }
             if (hasReply) {
-            	System.out.println("ordered bft server");
+                System.out.println("ordered bft server");
                 objOut.flush();
                 byteOut.flush();
                 reply = byteOut.toByteArray();
@@ -152,7 +185,7 @@ public class BFTServer extends DefaultSingleRecoverable {
             RequestType reqType = (RequestType) objIn.readObject();
             switch (reqType) {
                 case CLIENT_AMOUNT:
-                	System.out.println("unordered CLIENT_AMOUNT");
+                    System.out.println("unordered CLIENT_AMOUNT");
                     getClientAmount(objIn, objOut);
                     hasReply = true;
                     break;
@@ -166,8 +199,8 @@ public class BFTServer extends DefaultSingleRecoverable {
                     break;
             }
             if (hasReply) {
-            	System.out.println("unordered bft server");
-            	objOut.flush();
+                System.out.println("unordered bft server");
+                objOut.flush();
                 byteOut.flush();
                 reply = byteOut.toByteArray();
                 System.out.println(reply.length);
