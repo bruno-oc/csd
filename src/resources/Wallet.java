@@ -25,7 +25,8 @@ public class Wallet implements WalletService {
     private final DataBase db;
     private final AsynchServiceProxy asynchSP;
 
-    public Wallet(String filePath, int id) {
+    public Wallet(int id) {
+    	String filePath = "src/server/server_log" + id + ".json";
         db = new DataBase(filePath);
         asynchSP = new AsynchServiceProxy(id);
     }
@@ -35,11 +36,7 @@ public class Wallet implements WalletService {
         ReplyListener replyListener = new ReplyListenerImp(replyChain, asynchSP);
         asynchSP.invokeAsynchRequest(byteOut.toByteArray(), replyListener, type);
 
-        SystemReply reply = replyChain.take();
-        System.out.println(reply.getReplies().get(0).getOperation());
-        System.out.println(reply.getReplies().get(0).getValue());
-
-        return reply;
+        return replyChain.take();
     }
 
     @Override
@@ -54,6 +51,7 @@ public class Wallet implements WalletService {
 
             objOut.writeObject(RequestType.OBTAIN_COINS);
             objOut.writeObject(t);
+            objOut.writeObject(who);
 
             objOut.flush();
             byteOut.flush();
@@ -77,7 +75,8 @@ public class Wallet implements WalletService {
 
             objOut.writeObject(RequestType.TRANSFER);
             objOut.writeObject(t);
-
+            objOut.writeObject(from);
+            
             objOut.flush();
             byteOut.flush();
 
@@ -90,16 +89,18 @@ public class Wallet implements WalletService {
     }
 
     @Override
-    public SystemReply currentAmount(String who) {
+    public SystemReply currentAmount(String who, byte[] data) {
         System.out.println("currentAmount");
 
-        Transaction t = new Transaction(who, String.format(Transaction.CURRENT_AMOUNT, who), null);
+        Transaction t = (Transaction) Transaction.deserialize(data);
+        CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
             objOut.writeObject(RequestType.CLIENT_AMOUNT);
             objOut.writeObject(t);
+            objOut.writeObject(who);
 
             objOut.flush();
             byteOut.flush();
@@ -113,10 +114,12 @@ public class Wallet implements WalletService {
 
     @SuppressWarnings("unchecked")
     @Override
-    public SystemReply ledgerOfGlobalTransactions() {
+    public SystemReply ledgerOfGlobalTransactions(byte[] data) {
         System.out.println("ledgerOfGlobalTransactions");
 
-        Transaction t = new Transaction(null, Transaction.GET_ALL_TRANSCATIONS, null);
+        Transaction t = (Transaction) Transaction.deserialize(data);
+        CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
@@ -136,16 +139,18 @@ public class Wallet implements WalletService {
 
     @SuppressWarnings("unchecked")
     @Override
-    public SystemReply ledgerOfClientTransactions(String who) {
+    public SystemReply ledgerOfClientTransactions(String who, byte[] data) {
         System.out.println("ledgerOfClientTransactions");
 
-        Transaction t = new Transaction(who, String.format(Transaction.GET_USER_TRANSCATIONS, who), null);
-
+        Transaction t = (Transaction) Transaction.deserialize(data);
+        CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+        
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
             objOut.writeObject(RequestType.GET);
             objOut.writeObject(t);
+            objOut.writeObject(who);
 
             objOut.flush();
             byteOut.flush();
