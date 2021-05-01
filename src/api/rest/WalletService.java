@@ -1,5 +1,6 @@
 package api.rest;
 import api.Transaction;
+import server.SystemReply;
 
 import java.util.List;
 
@@ -22,28 +23,28 @@ public interface WalletService {
     @Path("/obtain/{who}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-    double obtainCoins (@PathParam("who") String who, byte[] data);
+    SystemReply obtainCoins (@PathParam("who") String who, byte[] data);
 
     @POST
     @Path("/transfer/{from}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-    double transferMoney (@PathParam("from") String from, @QueryParam("to") String to, byte[] data);
+    SystemReply transferMoney (@PathParam("from") String from, @QueryParam("to") String to, byte[] data);
 
     @GET
 	@Path("/{who}")
 	@Produces(MediaType.APPLICATION_JSON)
-    double currentAmount (@PathParam("who") String who);
+    SystemReply currentAmount (@PathParam("who") String who);
 
     @GET
 	@Path("/transactions")
 	@Produces(MediaType.APPLICATION_JSON)
-    List<Transaction> ledgerOfGlobalTransactions ();
+    SystemReply ledgerOfGlobalTransactions ();
 
     @GET
 	@Path("/transactions/{who}")
 	@Produces(MediaType.APPLICATION_JSON)
-    List<Transaction> ledgerOfClientTransactions(@PathParam("who") String who);
+    SystemReply ledgerOfClientTransactions(@PathParam("who") String who);
     
     @POST
     @Path("/minerate/{who}")
