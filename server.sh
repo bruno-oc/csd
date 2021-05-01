@@ -1,1 +1,1 @@
-java -Djavax.net.ssl.keyStore=security/server.ks -Djavax.net.ssl.keyStorePassword=password -Djavax.net.ssl.trustStore=security/truststore.ks -Djavax.net.ssl.trustStorePassword=changeit -cp target/WA-1-jar-with-dependencies.jar server.CoinServer src/server/$@
+java -Djavax.net.ssl.keyStore=security/server.ks -Djavax.net.ssl.keyStorePassword=password -Djavax.net.ssl.trustStore=security/truststore.ks -Djavax.net.ssl.trustStorePassword=changeit -cp target/WA-1-jar-with-dependencies.jar server.CoinServer $@
