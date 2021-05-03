@@ -21,7 +21,7 @@ public class ReplyListenerImp implements ReplyListener {
     private final Collection<ReplicaReply> replies =
             synchronizedCollection(new LinkedList<>());
     private final BlockingQueue<SystemReply> replyChain;
-    private AtomicInteger repliesCounter = new AtomicInteger(0);
+    private final AtomicInteger repliesCounter;
 
     public ReplyListenerImp(BlockingQueue<SystemReply> replyChain, AsynchServiceProxy asyncSP) {
         this.replyChain = replyChain;
@@ -38,7 +38,8 @@ public class ReplyListenerImp implements ReplyListener {
 
     @Override
     public void replyReceived(RequestContext requestContext, TOMMessage msg) {
-        recordReply(msg);
+        if(msg.getContent().length > 0)
+            recordReply(msg);
         
         if (hasValidQuorum())
             deliverReply(requestContext);
