@@ -26,6 +26,7 @@ import java.io.FileInputStream;
 import java.security.KeyPair;
 import java.security.KeyStore;
 import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
 
 public class WalletClient {
 
@@ -41,6 +42,8 @@ public class WalletClient {
     private static String clientId;
     
     private DataBase db;
+    private static int num_op;
+    private static double time;
 
     public WalletClient(String ip, String port) {
         serverURI = String.format("https://%s:%s/", ip, port);
@@ -49,6 +52,8 @@ public class WalletClient {
         
         String filePath = "src/client/client_log.json";
         db = new DataBase(filePath);
+        time = 0;
+        num_op = 0;
     }
 
     private static SSLContext getContext() throws Exception {
@@ -87,6 +92,17 @@ public class WalletClient {
         System.out.println("9: help");
         System.out.println("0: quit");
     }
+    
+    private static void metrics(long start, long end) {
+    	time += (double)(end-start) / 1_000_000_000.0;
+    	num_op++;
+    	System.out.println();
+    	System.out.println("========= Metrics =========");
+        System.out.println("Latency = " + (double)(end-start) / 1_000_000_000.0 + " secs");
+        System.out.println("Throughput = " + num_op/time);
+        System.out.println("===========================");
+        System.out.println();
+    }
 
     public static void main(String[] args) {
         if (args.length < 3) {
@@ -99,6 +115,7 @@ public class WalletClient {
         String input, who, to, ip;
         int port;
         double amount;
+        long start, end;
         help();
         do {
             System.out.print("> ");
@@ -110,7 +127,11 @@ public class WalletClient {
                     who = s.nextLine();
                     System.out.print("amount: ");
                     amount = Double.parseDouble(s.nextLine());
+                    
+                    start = System.nanoTime();
                     w.obtainCoin(who, amount);
+                    end = System.nanoTime();
+                    metrics(start, end);
                     break;
                 case "2":
                     System.out.print("from: ");
@@ -119,20 +140,35 @@ public class WalletClient {
                     to = s.nextLine();
                     System.out.print("amount: ");
                     amount = Double.parseDouble(s.nextLine());
+                    
+                    start = System.nanoTime();
                     w.transferMoney(who, to, amount);
+                    end = System.nanoTime();
+                    metrics(start, end);
                     break;
                 case "3":
                     System.out.print("who: ");
                     who = s.nextLine();
+                    
+                    start = System.nanoTime();
                     w.currentAmount(who);
+                    end = System.nanoTime();
+                    metrics(start, end);
                     break;
                 case "4":
+                	start = System.nanoTime();
                     w.ledgerTransactions("");
+                    end = System.nanoTime();
+                    metrics(start, end);
                     break;
                 case "5":
                     System.out.print("who: ");
                     who = s.nextLine();
+                    
+                    start = System.nanoTime();
                     w.ledgerTransactions(who);
+                    end = System.nanoTime();
+                    metrics(start, end);
                     break;
                 case "6":
                     System.out.print("ip: ");
