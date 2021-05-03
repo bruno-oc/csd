@@ -237,6 +237,7 @@ public class WalletClient {
                     return;
                 } else {
                     System.out.println("Error, HTTP error status: " + r.getStatus());
+                    retries++;
                 }
             } catch (ProcessingException pe) { // Error in communication with server
                 System.out.println("Timeout occurred.");
@@ -273,6 +274,7 @@ public class WalletClient {
                     System.out.println("balance: " + (double) reply.getReplies().get(0).getValue());
                     return;
                 } else {
+                	retries++;
                     System.out.println("Error, HTTP error status: " + r.getStatus());
                 }
             } catch (ProcessingException pe) { // Error in communication with server
@@ -314,6 +316,7 @@ public class WalletClient {
                     System.out.println(reply.getReplies().get(0).getValue());
                     return;
                 } else {
+                	retries++;
                     System.out.println("Error, HTTP error status: " + r.getStatus());
                 }
             } catch (ProcessingException pe) { // Error in communication with server
