@@ -4,15 +4,28 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import java.io.FileInputStream;
 import java.security.Key;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
+import java.security.spec.X509EncodedKeySpec;
 
 public class CryptoStuff {
 	
 	private static final String SIGNATURE_ALG = "SHA256withRSA";
+	
+	public static PublicKey getPublicKey(byte[] encodedKey) {
+		try {
+			KeyFactory factory = KeyFactory.getInstance("RSA");
+		    X509EncodedKeySpec encodedKeySpec = new X509EncodedKeySpec(encodedKey);
+		    return factory.generatePublic(encodedKeySpec);
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+	    return null;
+	}
 	
 	public static KeyPair getKeyPair() {
     	try {
