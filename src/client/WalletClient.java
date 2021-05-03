@@ -35,7 +35,8 @@ public class WalletClient {
     public final static int REPLY_TIMEOUT = 6000;
 
     private static Client restClient;
-    private final String serverURI;
+    private static String serverURI;
+
     private final KeyPair clientKey;
     private static String clientId;
     
@@ -82,6 +83,7 @@ public class WalletClient {
         System.out.println("3: currentAmount");
         System.out.println("4: ledgerOfGlobalTransactions");
         System.out.println("5: ledgerOfClientTransactions");
+        System.out.println("6: changeServer");
         System.out.println("9: help");
         System.out.println("0: quit");
     }
@@ -94,7 +96,8 @@ public class WalletClient {
         WalletClient w = new WalletClient(args[0], args[1]);
         clientId = args[2];
         Scanner s = new Scanner(System.in);
-        String input, who, to;
+        String input, who, to, ip;
+        int port;
         double amount;
         help();
         do {
@@ -131,6 +134,12 @@ public class WalletClient {
                     who = s.nextLine();
                     w.ledgerTransactions(who);
                     break;
+                case "6":
+                    System.out.print("ip: ");
+                    ip = s.nextLine();
+                    System.out.print("port: ");
+                    port = Integer.parseInt(s.nextLine());
+                    changeServer(ip, port);
                 case "9":
                     help();
                     break;
@@ -138,6 +147,10 @@ public class WalletClient {
                     break;
             }
         } while (!input.equals("0"));
+    }
+
+    private static void changeServer(String ip, int port) {
+        serverURI = String.format("https://%s:%s/", ip, port);
     }
 
     private Client startClient() {
@@ -151,7 +164,6 @@ public class WalletClient {
         }
 
         ClientConfig config = new ClientConfig();
-
         // How much time until timeout on opening the TCP connection to the server
         config.property(ClientProperties.CONNECT_TIMEOUT, CONNECTION_TIMEOUT);
         // How much time to wait for the reply of the server after sending the request
