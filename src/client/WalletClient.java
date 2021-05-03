@@ -181,7 +181,7 @@ public class WalletClient {
 
         try {
             signature = CryptoStuff.sign(clientKey.getPrivate(), op);
-            return new Transaction(clientId, m, signature);
+            return new Transaction(clientId, m, signature, clientKey.getPublic().getEncoded());
         } catch (Exception e) {
             e.printStackTrace();
         }

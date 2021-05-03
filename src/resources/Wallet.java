@@ -50,7 +50,7 @@ public class Wallet implements WalletService {
         System.out.println("obtainCoins");
 
         Transaction t = (Transaction) Transaction.deserialize(data);
-        CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
@@ -74,7 +74,7 @@ public class Wallet implements WalletService {
         System.out.println("transferMoney");
 
         Transaction t = (Transaction) Transaction.deserialize(data);
-        CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
@@ -99,7 +99,7 @@ public class Wallet implements WalletService {
         System.out.println("currentAmount");
 
         Transaction t = (Transaction) Transaction.deserialize(data);
-        CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
@@ -123,7 +123,7 @@ public class Wallet implements WalletService {
         System.out.println("ledgerOfGlobalTransactions");
 
         Transaction t = (Transaction) Transaction.deserialize(data);
-        CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
@@ -147,7 +147,7 @@ public class Wallet implements WalletService {
         System.out.println("ledgerOfClientTransactions");
 
         Transaction t = (Transaction) Transaction.deserialize(data);
-        CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
         
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {

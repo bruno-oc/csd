@@ -60,7 +60,7 @@ public class BFTServer extends DefaultSingleRecoverable {
             Transaction t = (Transaction) objIn.readObject();
             String client = (String) objIn.readObject();
 
-            CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+            CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
             db.addLog(t);
             double val = clientAmount(client);
@@ -80,7 +80,7 @@ public class BFTServer extends DefaultSingleRecoverable {
             Transaction t = (Transaction) objIn.readObject();
             String client = (String) objIn.readObject();
             
-            CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+            CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
             List<Transaction> logs = db.getLogsTransactions(), clientLogs = new LinkedList<>();
             for (Transaction log : logs)
@@ -104,7 +104,7 @@ public class BFTServer extends DefaultSingleRecoverable {
         try {
             Transaction t = (Transaction) objIn.readObject();
             
-            CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+            CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
             List<Transaction> logs = db.getLogsTransactions();
             db.addLog(t);
@@ -126,7 +126,7 @@ public class BFTServer extends DefaultSingleRecoverable {
             Transaction t = (Transaction) objIn.readObject();
             String client = (String) objIn.readObject();
             
-            CryptoStuff.verifySignature(CryptoStuff.getKeyPair().getPublic(), t.getOperation().getBytes(), t.getSig());
+            CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
             
             db.addLog(t);
             double val = clientAmount(client);
