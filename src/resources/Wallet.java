@@ -20,7 +20,6 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class Wallet implements WalletService {
 
@@ -34,7 +33,7 @@ public class Wallet implements WalletService {
         asynchSP = new AsynchServiceProxy(id);
     }
 
-    private SystemReply asyncReply(ByteArrayOutputStream byteOut, TOMMessageType type) throws InterruptedException {
+    private SystemReply asyncReply(ByteArrayOutputStream byteOut, TOMMessageType type, Transaction transaction) throws InterruptedException {
         BlockingQueue<SystemReply> replyChain = new LinkedBlockingDeque<>();
         ReplyListener replyListener = new ReplyListenerImp(replyChain, asynchSP);
         asynchSP.invokeAsynchRequest(byteOut.toByteArray(), replyListener, type);
@@ -42,6 +41,7 @@ public class Wallet implements WalletService {
         SystemReply reply = replyChain.take();
         if(reply.getReplies().isEmpty())
             throw new WebApplicationException(Response.Status.UNAUTHORIZED);
+        db.addLog(transaction);
         return reply;
     }
 
@@ -62,7 +62,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST, t);
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -86,7 +86,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST, t);
 
         } catch (IOException | InterruptedException e) {
             System.out.println("Exception: " + e.getMessage());
@@ -111,14 +111,13 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.UNORDERED_REQUEST);
+            return asyncReply(byteOut, TOMMessageType.UNORDERED_REQUEST, t);
         } catch (IOException | InterruptedException e) {
             System.out.println("Exception: " + e.getMessage());
         }
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public SystemReply ledgerOfGlobalTransactions(byte[] data) {
         System.out.println("ledgerOfGlobalTransactions");
@@ -136,7 +135,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.UNORDERED_REQUEST);
+            return asyncReply(byteOut, TOMMessageType.UNORDERED_REQUEST, t);
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -160,7 +159,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.UNORDERED_REQUEST);
+            return asyncReply(byteOut, TOMMessageType.UNORDERED_REQUEST, t);
         } catch (IOException | InterruptedException e) {
             System.out.println("Exception: " + e.getMessage());
         }
