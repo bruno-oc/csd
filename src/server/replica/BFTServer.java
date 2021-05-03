@@ -55,7 +55,7 @@ public class BFTServer extends DefaultSingleRecoverable {
         return total;
     }
 
-    private void writeTransaction(ObjectInput objIn, ObjectOutput objOut) {
+    private boolean writeTransaction(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Transaction t = (Transaction) objIn.readObject();
             String client = (String) objIn.readObject();
@@ -68,12 +68,14 @@ public class BFTServer extends DefaultSingleRecoverable {
                     TOMUtil.computeHash(t.getOperation().getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
             objOut.writeObject(reply);
+            return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Exception: " + e.getMessage());
         }
+        return false;
     }
 
-    private void getUserTransactions(ObjectInput objIn, ObjectOutput objOut) {
+    private boolean getUserTransactions(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Transaction t = (Transaction) objIn.readObject();
             String client = (String) objIn.readObject();
@@ -91,12 +93,14 @@ public class BFTServer extends DefaultSingleRecoverable {
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
 
             objOut.writeObject(reply);
+            return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Exception: " + e.getMessage());
         }
+        return false;
     }
 
-    private void getAllTransactions(ObjectInput objIn, ObjectOutput objOut) {
+    private boolean getAllTransactions(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Transaction t = (Transaction) objIn.readObject();
             
@@ -110,12 +114,14 @@ public class BFTServer extends DefaultSingleRecoverable {
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
 
             objOut.writeObject(reply);
+            return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Exception: " + e.getMessage());
         }
+        return false;
     }
 
-    private void getClientAmount(ObjectInput objIn, ObjectOutput objOut) {
+    private boolean getClientAmount(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Transaction t = (Transaction) objIn.readObject();
             String client = (String) objIn.readObject();
@@ -128,9 +134,11 @@ public class BFTServer extends DefaultSingleRecoverable {
                     TOMUtil.computeHash(t.getOperation().getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
             objOut.writeObject(reply);
+            return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Exception: " + e.getMessage());
         }
+        return false;
     }
 
     @Override
@@ -145,20 +153,16 @@ public class BFTServer extends DefaultSingleRecoverable {
             switch (reqType) {
                 case OBTAIN_COINS:
                 case TRANSFER:
-                    writeTransaction(objIn, objOut);
-                    hasReply = true;
+                    hasReply = writeTransaction(objIn, objOut);
                     break;
                 case CLIENT_AMOUNT:
-                    getClientAmount(objIn, objOut);
-                    hasReply = true;
+                    hasReply = getClientAmount(objIn, objOut);
                     break;
                 case GET:
-                    getUserTransactions(objIn, objOut);
-                    hasReply = true;
+                    hasReply = getUserTransactions(objIn, objOut);
                     break;
                 case GET_ALL:
-                    getAllTransactions(objIn, objOut);
-                    hasReply = true;
+                    hasReply = getAllTransactions(objIn, objOut);
                     break;
             }
             if (hasReply) {
@@ -166,6 +170,7 @@ public class BFTServer extends DefaultSingleRecoverable {
                 byteOut.flush();
                 reply = byteOut.toByteArray();
             } else {
+                System.out.println("Sending empty reply");
                 reply = new byte[0];
             }
 
@@ -186,16 +191,13 @@ public class BFTServer extends DefaultSingleRecoverable {
             RequestType reqType = (RequestType) objIn.readObject();
             switch (reqType) {
                 case CLIENT_AMOUNT:
-                    getClientAmount(objIn, objOut);
-                    hasReply = true;
+                    hasReply = getClientAmount(objIn, objOut);
                     break;
                 case GET:
-                    getUserTransactions(objIn, objOut);
-                    hasReply = true;
+                    hasReply = getUserTransactions(objIn, objOut);
                     break;
                 case GET_ALL:
-                    getAllTransactions(objIn, objOut);
-                    hasReply = true;
+                    hasReply = getAllTransactions(objIn, objOut);
                     break;
             }
             if (hasReply) {
@@ -203,6 +205,7 @@ public class BFTServer extends DefaultSingleRecoverable {
                 byteOut.flush();
                 reply = byteOut.toByteArray();
             } else {
+                System.out.println("Sending empty reply");
                 reply = new byte[0];
             }
 
