@@ -1,6 +1,7 @@
 package api;
 
 import java.io.*;
+import java.security.PublicKey;
 
 public class Transaction implements Serializable {
 
@@ -15,11 +16,13 @@ public class Transaction implements Serializable {
     private String id;
     private String operation;
     private byte[] sig;
+    private byte[] pub;
 
-    public Transaction(String id, String operation, byte[] sig) {
+    public Transaction(String id, String operation, byte[] sig, byte[] pub) {
         this.id = id;
         this.operation = operation;
         this.sig = sig;
+        this.pub = pub;
     }
 
     public static byte[] serialize(Transaction obj) {
@@ -55,6 +58,10 @@ public class Transaction implements Serializable {
 
     public byte[] getSig() {
         return sig;
+    }
+    
+    public byte[] getPublicKey() {
+        return pub;
     }
 
     public boolean contains(String user) {
