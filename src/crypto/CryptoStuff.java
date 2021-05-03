@@ -1,5 +1,7 @@
 package crypto;
 
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
 import java.io.FileInputStream;
 import java.security.Key;
 import java.security.KeyPair;
@@ -43,20 +45,21 @@ public class CryptoStuff {
     }
 
     public static void verifySignature(PublicKey pub, byte[] message, byte[] sigBytes) {
-        
+        boolean verified = false;
     	try {
     		Signature signature = Signature.getInstance(SIGNATURE_ALG);
 
             signature.initVerify(pub);
             signature.update(message);
             
-            if(!signature.verify(sigBytes)) {
-            	System.out.println("Invalid signature :(");
-            	System.exit(-1);
-            }
+            verified = signature.verify(sigBytes);
     	} catch(Exception e) {
     		e.printStackTrace();
     	}
+        if(!verified) {
+            System.out.println("Invalid signature :(");
+            throw new WebApplicationException(Response.Status.UNAUTHORIZED);
+        }
     }
 
 }
