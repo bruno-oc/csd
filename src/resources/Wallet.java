@@ -119,7 +119,7 @@ public class Wallet implements WalletService {
     }
 
     @Override
-    public SystemReply ledgerOfGlobalTransactions(byte[] data) {
+    public SystemReply ledgerOfGlobalTransactions(int lastN, byte[] data) {
         System.out.println("ledgerOfGlobalTransactions");
 
         Transaction t = (Transaction) Transaction.deserialize(data);
@@ -131,6 +131,8 @@ public class Wallet implements WalletService {
 
             objOut.writeObject(RequestType.GET_ALL);
             objOut.writeObject(t);
+            System.out.println("lastN " + lastN);
+            objOut.writeObject(lastN);
 
             objOut.flush();
             byteOut.flush();
@@ -143,7 +145,7 @@ public class Wallet implements WalletService {
     }
 
     @Override
-    public SystemReply ledgerOfClientTransactions(String who, byte[] data) {
+    public SystemReply ledgerOfClientTransactions(String who, int lastN, byte[] data) {
         System.out.println("ledgerOfClientTransactions");
 
         Transaction t = (Transaction) Transaction.deserialize(data);
@@ -155,6 +157,7 @@ public class Wallet implements WalletService {
             objOut.writeObject(RequestType.GET);
             objOut.writeObject(t);
             objOut.writeObject(who);
+            objOut.writeObject(lastN);
 
             objOut.flush();
             byteOut.flush();
