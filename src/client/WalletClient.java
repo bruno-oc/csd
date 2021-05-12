@@ -113,7 +113,7 @@ public class WalletClient {
         clientId = args[2];
         Scanner s = new Scanner(System.in);
         String input, who, to, ip;
-        int port;
+        int port, lastN;
         double amount;
         long start, end;
         help();
@@ -146,27 +146,29 @@ public class WalletClient {
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
-                case "3":
-                    System.out.print("who: ");
-                    who = s.nextLine();
-                    
+                case "3":                    
                     start = System.nanoTime();
-                    w.currentAmount(who);
+                    w.currentAmount(clientId);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
                 case "4":
+                	System.out.print("lastN: ");
+                    lastN = Integer.parseInt(s.nextLine());
+                    
                 	start = System.nanoTime();
-                    w.ledgerTransactions("");
+                    w.ledgerTransactions("", lastN);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
                 case "5":
                     System.out.print("who: ");
                     who = s.nextLine();
+                    System.out.print("lastN: ");
+                    lastN = Integer.parseInt(s.nextLine());
                     
                     start = System.nanoTime();
-                    w.ledgerTransactions(who);
+                    w.ledgerTransactions(who, lastN);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
@@ -340,7 +342,7 @@ public class WalletClient {
         }
     }
 
-    public void ledgerTransactions(String who) {
+    public void ledgerTransactions(String who, int lastN) {
     	
     	String  m;
     	if(who.equals(""))
@@ -355,7 +357,7 @@ public class WalletClient {
 
         while (retries < MAX_RETRIES) {
             try {
-            	Response r = target.path("/transactions/" + who).request().accept(MediaType.APPLICATION_JSON)
+            	Response r = target.path("/transactions/" + who).queryParam("lastN", lastN).request().accept(MediaType.APPLICATION_JSON)
                         .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON_TYPE));
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
