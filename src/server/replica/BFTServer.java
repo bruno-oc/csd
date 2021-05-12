@@ -9,9 +9,7 @@ import crypto.CryptoStuff;
 import db.DataBase;
 
 import java.io.*;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class BFTServer extends DefaultSingleRecoverable {
 
@@ -79,14 +77,22 @@ public class BFTServer extends DefaultSingleRecoverable {
         try {
             Transaction t = (Transaction) objIn.readObject();
             String client = (String) objIn.readObject();
+            int lastN = (int) objIn.readObject();
             
             CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
             List<Transaction> logs = db.getLogsTransactions(), clientLogs = new LinkedList<>();
-            for (Transaction log : logs)
-                if (Arrays.stream(log.getOperation().split(" ")).anyMatch(client::equals))
+            Collections.reverse(logs);
+            int n = 0;
+            for (Transaction log : logs) {
+                if (Arrays.stream(log.getOperation().split(" ")).anyMatch(client::equals)) {
                     clientLogs.add(log);
-            db.addLog(t);
+                    n++;
+                    if(n >= lastN)
+                    	break;
+                }
+            }
+            Collections.reverse(clientLogs);
 
             ReplicaReply reply = new ReplicaReply(id, t.getOperation(), clientLogs,
                     TOMUtil.computeHash(t.getOperation().getBytes()),
@@ -95,7 +101,7 @@ public class BFTServer extends DefaultSingleRecoverable {
             objOut.writeObject(reply);
             return true;
         } catch (Exception e) {
-            System.out.println("Exception: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -103,20 +109,25 @@ public class BFTServer extends DefaultSingleRecoverable {
     private boolean getAllTransactions(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Transaction t = (Transaction) objIn.readObject();
+            int lastN = (int) objIn.readObject();
             
             CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
             List<Transaction> logs = db.getLogsTransactions();
-            db.addLog(t);
+            List<Transaction> temp = logs;
+            System.out.println("===>" + (logs.size()-lastN) +" "+logs.size());
+            System.out.println("wtf " + lastN);
+            if(lastN < logs.size())
+            	temp = logs.subList(logs.size()-lastN, logs.size());
 
-            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), logs,
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), new ArrayList<Transaction>(temp),
                     TOMUtil.computeHash(t.getOperation().getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
 
             objOut.writeObject(reply);
             return true;
         } catch (Exception e) {
-            System.out.println("Exception: " + e.getMessage());
+            e.printStackTrace();
         }
         return false;
     }
@@ -128,7 +139,6 @@ public class BFTServer extends DefaultSingleRecoverable {
             
             CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
             
-            db.addLog(t);
             double val = clientAmount(client);
             ReplicaReply reply = new ReplicaReply(id, t.getOperation(), val,
                     TOMUtil.computeHash(t.getOperation().getBytes()),
