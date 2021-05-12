@@ -41,13 +41,13 @@ public interface WalletService {
 	@Path("/transactions")
     @Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-    SystemReply ledgerOfGlobalTransactions (byte[] data);
+    SystemReply ledgerOfGlobalTransactions (@QueryParam("lastN") int lastN, byte[] data);
 
     @POST
 	@Path("/transactions/{who}")
     @Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-    SystemReply ledgerOfClientTransactions(@PathParam("who") String who, byte[] data);
+    SystemReply ledgerOfClientTransactions(@PathParam("who") String who, @QueryParam("lastN") int lastN, byte[] data);
     
     @POST
     @Path("/minerate/{who}")
