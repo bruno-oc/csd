@@ -303,9 +303,9 @@ public class WalletClient {
         }
     }
 
-    public void currentAmount(String who) {
+    public void currentAmount(String me) {
     	
-    	String m = String.format(Transaction.CURRENT_AMOUNT, who);
+    	String m = String.format(Transaction.CURRENT_AMOUNT, me);
         Transaction output = getSignedTranscation(m);
     	
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
@@ -315,7 +315,7 @@ public class WalletClient {
         while (retries < MAX_RETRIES) {
             try {
 
-            	Response r = target.path(who).request().accept(MediaType.APPLICATION_JSON)
+            	Response r = target.path(me).request().accept(MediaType.APPLICATION_JSON)
                         .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON));
             	
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {

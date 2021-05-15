@@ -95,7 +95,7 @@ public class Wallet implements WalletService {
     }
 
     @Override
-    public SystemReply currentAmount(String who, byte[] data) {
+    public SystemReply currentAmount(String me, byte[] data) {
         System.out.println("currentAmount");
 
         Transaction t = (Transaction) Transaction.deserialize(data);
@@ -106,7 +106,7 @@ public class Wallet implements WalletService {
 
             objOut.writeObject(RequestType.CLIENT_AMOUNT);
             objOut.writeObject(t);
-            objOut.writeObject(who);
+            objOut.writeObject(me);
 
             objOut.flush();
             byteOut.flush();

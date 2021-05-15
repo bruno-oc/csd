@@ -32,10 +32,10 @@ public interface WalletService {
     SystemReply transferMoney (@PathParam("from") String from, @QueryParam("to") String to, byte[] data);
 
     @POST
-	@Path("/{who}")
+	@Path("/{me}")
     @Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-    SystemReply currentAmount (@PathParam("who") String who, byte[] data);
+    SystemReply currentAmount (@PathParam("me") String me, byte[] data);
 
     @POST
 	@Path("/transactions")
