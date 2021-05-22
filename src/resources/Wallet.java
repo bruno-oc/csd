@@ -4,7 +4,6 @@ import api.Transaction;
 import api.rest.WalletService;
 import bftsmart.communication.client.ReplyListener;
 import bftsmart.tom.AsynchServiceProxy;
-import bftsmart.tom.ServiceProxy;
 import bftsmart.tom.core.messages.TOMMessageType;
 import crypto.CryptoStuff;
 import db.DataBase;
@@ -22,13 +21,11 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 
 public class Wallet implements WalletService {
-
-    // TODO: add logs to proxy
     private final DataBase db;
     private final AsynchServiceProxy asynchSP;
 
     public Wallet(int id) {
-    	String filePath = "src/server/server_log" + id + ".json";
+        String filePath = "src/server/server_log" + id + ".json";
         db = new DataBase(filePath);
         asynchSP = new AsynchServiceProxy(id);
     }
@@ -39,7 +36,7 @@ public class Wallet implements WalletService {
         asynchSP.invokeAsynchRequest(byteOut.toByteArray(), replyListener, type);
 
         SystemReply reply = replyChain.take();
-        if(reply.getReplies().isEmpty())
+        if (reply.getReplies().isEmpty())
             throw new WebApplicationException(Response.Status.UNAUTHORIZED);
         db.addLog(transaction);
         return reply;
@@ -82,7 +79,7 @@ public class Wallet implements WalletService {
             objOut.writeObject(RequestType.TRANSFER);
             objOut.writeObject(t);
             objOut.writeObject(from);
-            
+
             objOut.flush();
             byteOut.flush();
 
@@ -131,7 +128,6 @@ public class Wallet implements WalletService {
 
             objOut.writeObject(RequestType.GET_ALL);
             objOut.writeObject(t);
-            System.out.println("lastN " + lastN);
             objOut.writeObject(lastN);
 
             objOut.flush();
@@ -150,7 +146,7 @@ public class Wallet implements WalletService {
 
         Transaction t = (Transaction) Transaction.deserialize(data);
         CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
-        
+
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
@@ -170,20 +166,17 @@ public class Wallet implements WalletService {
     }
 
     @Override
-    public double minerateMoney(String who) {
-        // TODO Auto-generated method stub
-        return 0;
+    public SystemReply obtainLastMinedBlock(byte[] data) {
+        return null;
     }
 
     @Override
-    public void installSmartContract(String who, String smart_contract) {
-        // TODO Auto-generated method stub
-
+    public SystemReply pickNotMineratedTransaction(int n, byte[] data) {
+        return ledgerOfGlobalTransactions(n, data);
     }
 
     @Override
-    public void transferMoneyWithSmartContract(String from, String to, double amount, String smart_contract_ref) {
-        // TODO Auto-generated method stub
-
+    public SystemReply sendMinedBlock(byte[] data) {
+        return null;
     }
 }
