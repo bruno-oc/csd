@@ -1,10 +1,11 @@
 package client;
 
+import api.Block;
 import api.Transaction;
 import api.rest.WalletService;
+import bftsmart.tom.util.TOMUtil;
 import crypto.CryptoStuff;
 import db.DataBase;
-
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import server.InsecureHostnameVerifier;
@@ -22,11 +23,17 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
 
 public class WalletClient {
 
@@ -37,19 +44,17 @@ public class WalletClient {
 
     private static Client restClient;
     private static String serverURI;
-
-    private final KeyPair clientKey;
     private static String clientId;
-    
-    private DataBase db;
     private static int num_op;
     private static double time;
+    private final KeyPair clientKey;
+    private DataBase db;
 
     public WalletClient(String ip, String port) {
         serverURI = String.format("https://%s:%s/", ip, port);
         restClient = this.startClient();
         clientKey = CryptoStuff.getKeyPair();
-        
+
         String filePath = "src/client/client_log.json";
         db = new DataBase(filePath);
         time = 0;
@@ -89,17 +94,18 @@ public class WalletClient {
         System.out.println("4: ledgerOfGlobalTransactions");
         System.out.println("5: ledgerOfClientTransactions");
         System.out.println("6: changeServer");
-        System.out.println("9: help");
-        System.out.println("0: quit");
+        System.out.println("7: minerateBlock");
+        System.out.println("h: help");
+        System.out.println("q: quit");
     }
-    
+
     private static void metrics(long start, long end) {
-    	time += (double)(end-start) / 1_000_000_000.0;
-    	num_op++;
-    	System.out.println();
-    	System.out.println("========= Metrics =========");
-        System.out.println("Latency = " + (double)(end-start) / 1_000_000_000.0 + " secs");
-        System.out.println("Throughput = " + num_op/time);
+        time += (double) (end - start) / 1_000_000_000.0;
+        num_op++;
+        System.out.println();
+        System.out.println("========= Metrics =========");
+        System.out.println("Latency = " + (double) (end - start) / 1_000_000_000.0 + " secs");
+        System.out.println("Throughput = " + num_op / time);
         System.out.println("===========================");
         System.out.println();
     }
@@ -127,7 +133,7 @@ public class WalletClient {
                     who = s.nextLine();
                     System.out.print("amount: ");
                     amount = Double.parseDouble(s.nextLine());
-                    
+
                     start = System.nanoTime();
                     w.obtainCoin(who, amount);
                     end = System.nanoTime();
@@ -140,23 +146,23 @@ public class WalletClient {
                     to = s.nextLine();
                     System.out.print("amount: ");
                     amount = Double.parseDouble(s.nextLine());
-                    
+
                     start = System.nanoTime();
                     w.transferMoney(who, to, amount);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
-                case "3":                    
+                case "3":
                     start = System.nanoTime();
                     w.currentAmount(clientId);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
                 case "4":
-                	System.out.print("lastN: ");
+                    System.out.print("lastN: ");
                     lastN = Integer.parseInt(s.nextLine());
-                    
-                	start = System.nanoTime();
+
+                    start = System.nanoTime();
                     w.ledgerTransactions("", lastN);
                     end = System.nanoTime();
                     metrics(start, end);
@@ -166,7 +172,7 @@ public class WalletClient {
                     who = s.nextLine();
                     System.out.print("lastN: ");
                     lastN = Integer.parseInt(s.nextLine());
-                    
+
                     start = System.nanoTime();
                     w.ledgerTransactions(who, lastN);
                     end = System.nanoTime();
@@ -178,13 +184,21 @@ public class WalletClient {
                     System.out.print("port: ");
                     port = Integer.parseInt(s.nextLine());
                     changeServer(ip, port);
-                case "9":
+                case "7":
+                    start = System.nanoTime();
+                    System.out.print("N transactions: ");
+                    lastN = Integer.parseInt(s.nextLine());
+                    w.minerate(lastN);
+                    end = System.nanoTime();
+                    metrics(start, end);
+                    break;
+                case "h":
                     help();
                     break;
                 default:
                     break;
             }
-        } while (!input.equals("0"));
+        } while (!input.equals("q"));
     }
 
     private static void changeServer(String ip, int port) {
@@ -304,10 +318,10 @@ public class WalletClient {
     }
 
     public void currentAmount(String me) {
-    	
-    	String m = String.format(Transaction.CURRENT_AMOUNT, me);
+
+        String m = String.format(Transaction.CURRENT_AMOUNT, me);
         Transaction output = getSignedTranscation(m);
-    	
+
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         short retries = 0;
@@ -315,16 +329,16 @@ public class WalletClient {
         while (retries < MAX_RETRIES) {
             try {
 
-            	Response r = target.path(me).request().accept(MediaType.APPLICATION_JSON)
+                Response r = target.path(me).request().accept(MediaType.APPLICATION_JSON)
                         .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON));
-            	
+
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
                     SystemReply reply = r.readEntity(SystemReply.class);
                     db.addLog(reply);
                     System.out.println("balance: " + (double) reply.getReplies().get(0).getValue());
                     return;
                 } else {
-                	retries++;
+                    retries++;
                     System.out.println("Error, HTTP error status: " + r.getStatus());
                 }
             } catch (ProcessingException pe) { // Error in communication with server
@@ -342,31 +356,32 @@ public class WalletClient {
         }
     }
 
-    public void ledgerTransactions(String who, int lastN) {
-    	
-    	String  m;
-    	if(who.equals(""))
-    		m = String.format(Transaction.GET_ALL_TRANSCATIONS);
-    	else
-    		m = String.format(Transaction.GET_USER_TRANSCATIONS, who);
+    @SuppressWarnings("unchecked")
+    public List<Transaction> ledgerTransactions(String who, int lastN) {
+
+        String m;
+        if (who.equals(""))
+            m = String.format(Transaction.GET_ALL_TRANSCATIONS);
+        else
+            m = String.format(Transaction.GET_USER_TRANSCATIONS, who);
         Transaction output = getSignedTranscation(m);
-    	
+
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         short retries = 0;
 
         while (retries < MAX_RETRIES) {
             try {
-            	Response r = target.path("/transactions/" + who).queryParam("lastN", lastN).request().accept(MediaType.APPLICATION_JSON)
+                Response r = target.path("/transactions/" + who).queryParam("lastN", lastN).request().accept(MediaType.APPLICATION_JSON)
                         .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON_TYPE));
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
                     SystemReply reply = r.readEntity(SystemReply.class);
                     db.addLog(reply);
                     System.out.println(reply.getReplies().get(0).getValue());
-                    return;
+                    return (List<Transaction>) reply.getReplies().get(0).getValue();
                 } else {
-                	retries++;
+                    retries++;
                     System.out.println("Error, HTTP error status: " + r.getStatus());
                 }
             } catch (ProcessingException pe) { // Error in communication with server
@@ -381,5 +396,62 @@ public class WalletClient {
                 System.out.println("Retrying to execute request.");
             }
         }
+        return null;
+    }
+
+    private void minerate(int lastN) {
+        Block lastMined = obtainLastMinedBlock();
+        List<Transaction> transactionList = ledgerTransactions("", lastN);
+
+        try {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(bos);
+            oos.writeObject(lastMined);
+            byte[] lastMinedBytes = bos.toByteArray();
+
+            Block minedBlock = new Block(transactionList, TOMUtil.computeHash(lastMinedBytes), null);
+            boolean found = false;
+            byte[] nonce = new byte[8];
+
+            while (!found) {
+                SecureRandom.getInstanceStrong().nextBytes(nonce);
+                minedBlock.setProof(nonce);
+
+                oos.writeObject(lastMined);
+                if (proofOfWork(bos.toByteArray())) {
+                    found = true;
+                }
+            }
+
+            sendMinedBlock(minedBlock);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean proofOfWork(byte[] block) {
+        byte[] blockHash = TOMUtil.computeHash(block);
+        for (Byte b: blockHash) {
+            System.out.print(b + " ");
+        }
+        System.out.println();
+        int count = 0;
+        for(byte b : blockHash) {
+            if(b == 0) {
+                System.out.println("first byte: " + b);
+                count++;
+                if (count == 2)
+                    return true;
+            } else
+                return false;
+        }
+        return false;
+    }
+
+    private Block obtainLastMinedBlock() {
+        return new Block(null, null, null);
+    }
+
+    private void sendMinedBlock(Block mined) {
     }
 }
