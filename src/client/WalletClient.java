@@ -438,7 +438,6 @@ public class WalletClient {
                     found = true;
                 }
             }
-
             sendMinedBlock(minedBlock);
         } catch (Exception e) {
             e.printStackTrace();
@@ -508,5 +507,45 @@ public class WalletClient {
     }
 
     private void sendMinedBlock(Block mined) {
+        Client restClient = startClient();
+        WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
+
+        byte[] sig = new byte[0];
+        KeyPair kp = CryptoStuff.getKeyPair();
+        try {
+            sig = CryptoStuff.sign(kp.getPrivate(), mined.getProof());
+        } catch (Exception e1) {
+            e1.printStackTrace();
+        }
+        mined.setId(clientId);
+        mined.setSig(sig);
+        mined.setPub(kp.getPublic().getEncoded());
+
+        short retries = 0;
+        while (retries < MAX_RETRIES) {
+            try {
+                Response r = target.path("/mine/block").request().accept(MediaType.APPLICATION_JSON)
+                        .post(Entity.entity(Block.serialize(mined), MediaType.APPLICATION_JSON));
+
+                if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
+                    SystemReply reply = r.readEntity(SystemReply.class);
+                    System.out.println("Block mined!");
+                    return;
+                } else {
+                    System.out.println("Error, HTTP error status: " + r.getStatus());
+                    retries++;
+                }
+            } catch (ProcessingException pe) { // Error in communication with server
+                System.out.println("Timeout occurred.");
+                System.out.println(pe.getMessage()); // Could be removed
+                retries++;
+                try {
+                    Thread.sleep(RETRY_PERIOD); // wait until attempting again.
+                } catch (InterruptedException e) {
+                    // Nothing to be done here, if this happens we will just retry sooner.
+                }
+                System.out.println("Retrying to execute request.");
+            }
+        }
     }
 }
