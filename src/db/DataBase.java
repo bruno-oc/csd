@@ -1,10 +1,9 @@
 package db;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
 import api.Block;
 import api.Transaction;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import server.SystemReply;
 
 import java.io.File;
@@ -18,22 +17,21 @@ import java.util.Scanner;
 public class DataBase {
 
     private final String filePath;
-    private Gson gson;
+    private final Gson gson;
 
     public DataBase(String filePath) {
         this.filePath = filePath;
         gson = new Gson();
         File f = new File(filePath);
-        if(!f.exists()) {
-        	try {
-				f.createNewFile();
-				FileWriter w = new FileWriter(f);
-	            w.write("[]");
-	            w.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+        if (!f.exists()) {
+            try {
+                f.createNewFile();
+                FileWriter w = new FileWriter(f);
+                w.write("[]");
+                w.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -63,7 +61,7 @@ public class DataBase {
         String jsonString = gson.toJson(logs);
         writeData(filePath, jsonString);
     }
-    
+
     public void addLog(Block log) {
         List<Block> logs = getLogsBlocks();
         logs.add(log);
@@ -73,30 +71,30 @@ public class DataBase {
 
     public List<Transaction> getLogsTransactions() {
         String jsonString = readData(filePath);
-        
+
         Type type = new TypeToken<List<Transaction>>() {
         }.getType();
         return gson.fromJson(jsonString, type);
     }
-    
+
     public List<Block> getLogsBlocks() {
         String jsonString = readData(filePath);
-        
+
         Type type = new TypeToken<List<Block>>() {
         }.getType();
         return gson.fromJson(jsonString, type);
     }
-    
+
     public void addLog(SystemReply log) {
         List<SystemReply> logs = getLogsSystemReply();
         logs.add(log);
         String jsonString = gson.toJson(logs);
         writeData(filePath, jsonString);
     }
-    
+
     public List<SystemReply> getLogsSystemReply() {
         String jsonString = readData(filePath);
-        
+
         Type type = new TypeToken<List<Transaction>>() {
         }.getType();
         return gson.fromJson(jsonString, type);
@@ -112,4 +110,15 @@ public class DataBase {
         }
     }
 
+    public boolean remove(List<Transaction> closedTransactions) {
+        List<Transaction> logs = getLogsTransactions();
+        for (Transaction t : closedTransactions)
+            if(!logs.contains(t))
+                return false;
+        for (Transaction t : closedTransactions)
+            logs.remove(t);
+        String jsonString = gson.toJson(logs);
+        writeData(filePath, jsonString);
+        return true;
+    }
 }
