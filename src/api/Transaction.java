@@ -1,7 +1,7 @@
 package api;
 
 import java.io.*;
-import java.security.PublicKey;
+import java.util.Arrays;
 
 public class Transaction implements Serializable {
 
@@ -76,5 +76,27 @@ public class Transaction implements Serializable {
                 ", operation='" + operation + '\'' +
                 ", sig=" + (sig != null ? sig.length : "none") +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Transaction that = (Transaction) o;
+
+        if (!id.equals(that.id)) return false;
+        if (!operation.equals(that.operation)) return false;
+        if (!Arrays.equals(sig, that.sig)) return false;
+        return Arrays.equals(pub, that.pub);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = id.hashCode();
+        result = 31 * result + operation.hashCode();
+        result = 31 * result + Arrays.hashCode(sig);
+        result = 31 * result + Arrays.hashCode(pub);
+        return result;
     }
 }
