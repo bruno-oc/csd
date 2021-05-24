@@ -8,6 +8,10 @@ import crypto.CryptoStuff;
 import db.DataBase;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import server.InsecureHostnameVerifier;
 import server.SystemReply;
 
@@ -27,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyStore;
@@ -49,6 +54,8 @@ public class WalletClient {
     private static double time;
     private final KeyPair clientKey;
     private DataBase db;
+    
+    private Gson gson = new Gson();
 
     public WalletClient(String ip, String port) {
         serverURI = String.format("https://%s:%s/", ip, port);
@@ -95,6 +102,7 @@ public class WalletClient {
         System.out.println("5: ledgerOfClientTransactions");
         System.out.println("6: changeServer");
         System.out.println("7: minerateBlock");
+        System.out.println("8: obtain last block");
         System.out.println("h: help");
         System.out.println("q: quit");
     }
@@ -191,6 +199,9 @@ public class WalletClient {
                     w.minerate(lastN);
                     end = System.nanoTime();
                     metrics(start, end);
+                    break;
+                case "8":
+                	w.obtainLastMinedBlock();
                     break;
                 case "h":
                     help();
@@ -335,7 +346,7 @@ public class WalletClient {
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
                     SystemReply reply = r.readEntity(SystemReply.class);
                     db.addLog(reply);
-                    System.out.println("balance: " + (double) reply.getReplies().get(0).getValue());
+                    System.out.println("balance: " + reply.getReplies().get(0).getValue());
                     return;
                 } else {
                     retries++;
@@ -378,8 +389,13 @@ public class WalletClient {
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
                     SystemReply reply = r.readEntity(SystemReply.class);
                     db.addLog(reply);
-                    System.out.println(reply.getReplies().get(0).getValue());
-                    return (List<Transaction>) reply.getReplies().get(0).getValue();
+                    String json = reply.getReplies().get(0).getValue();
+                    System.out.println(json);
+                    
+                    Type type = new TypeToken<List<Transaction>>() {
+                    }.getType();
+                    
+                    return gson.fromJson(json, type);
                 } else {
                     retries++;
                     System.out.println("Error, HTTP error status: " + r.getStatus());
@@ -409,7 +425,7 @@ public class WalletClient {
             oos.writeObject(lastMined);
             byte[] lastMinedBytes = bos.toByteArray();
 
-            Block minedBlock = new Block(transactionList, TOMUtil.computeHash(lastMinedBytes), null);
+            Block minedBlock = new Block(transactionList, TOMUtil.computeHash(lastMinedBytes));
             boolean found = false;
             byte[] nonce = new byte[8];
 
@@ -448,8 +464,47 @@ public class WalletClient {
         return false;
     }
 
-    private Block obtainLastMinedBlock() {
-        return new Block(null, null, null);
+    public Block obtainLastMinedBlock() {
+    	
+    	String m = Transaction.GET_LAST_MINED_BLOCK;
+        Transaction output = getSignedTranscation(m);
+
+        WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
+
+        short retries = 0;
+
+        while (retries < MAX_RETRIES) {
+            try {
+                Response r = target.path("/mine/lastBlock").request().accept(MediaType.APPLICATION_JSON)
+                        .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON));
+
+                if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
+                    SystemReply reply = r.readEntity(SystemReply.class);
+                    String json = reply.getReplies().get(0).getValue();
+                    
+                    Type type = new TypeToken<Block>() {
+                    }.getType();
+                    Block b = gson.fromJson(json, type);
+                    System.out.println(b.getId());
+                    System.out.println(b.getTransactions().get(0).getOperation());
+                    return b;
+                } else {
+                    retries++;
+                    System.out.println("Error, HTTP error status: " + r.getStatus());
+                }
+            } catch (ProcessingException pe) { // Error in communication with server
+                System.out.println("Timeout occurred.");
+                pe.printStackTrace(); // Could be removed
+                retries++;
+                try {
+                    Thread.sleep(RETRY_PERIOD); // wait until attempting again.
+                } catch (InterruptedException e) {
+                    // Nothing to be done here, if this happens we will just retry sooner.
+                }
+                System.out.println("Retrying to execute request.");
+            }
+        }
+        return null;
     }
 
     private void sendMinedBlock(Block mined) {
