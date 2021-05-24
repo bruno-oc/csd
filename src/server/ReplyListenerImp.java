@@ -38,7 +38,8 @@ public class ReplyListenerImp implements ReplyListener {
 
     @Override
     public void replyReceived(RequestContext requestContext, TOMMessage msg) {
-        if(msg.getContent().length > 0)
+        System.out.println("msg.getContent().length="+msg.getContent().length);
+    	if(msg.getContent().length > 0)
             recordReply(msg);
         
         if (hasValidQuorum())
