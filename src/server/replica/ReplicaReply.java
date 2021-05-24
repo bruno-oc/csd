@@ -2,12 +2,14 @@ package server.replica;
 
 import java.io.Serializable;
 
+import api.Block;
+
 public class ReplicaReply implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private int id;
-    private Object value;
+    private String value;
     private String operation;
     private byte[] hash;
     private byte[] signature;
@@ -15,7 +17,7 @@ public class ReplicaReply implements Serializable {
     public ReplicaReply() {
     }
 
-    public ReplicaReply(int id, String operation, Object value, byte[] hash, byte[] signature) {
+    public ReplicaReply(int id, String operation, String value, byte[] hash, byte[] signature) {
         this.id = id;
         this.operation = operation;
         this.value = value;
@@ -27,7 +29,7 @@ public class ReplicaReply implements Serializable {
         return id;
     }
 
-    public Object getValue() {
+    public String getValue() {
         return value;
     }
 
