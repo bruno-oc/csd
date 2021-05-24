@@ -41,21 +41,25 @@ public class BFTServer extends DefaultSingleRecoverable {
 
     private double clientAmount(String client) {
         double total = 0;
-        List<Transaction> transactions = db.getLogsTransactions();
-        String log;
-        for (Transaction t : transactions) {
-            log = t.getOperation();
-            if (Arrays.stream(log.split(" ")).anyMatch(client::equals)
-                    && (log.contains("obtainCoins") || log.contains("transferMoney"))) {
-                String[] str = log.split(" ");
-                double temp = Double.parseDouble(str[str.length - 1]);
+        List<Block> minedBlocks = blocksDB.getLogsBlocks();
 
-                if (log.contains("obtainCoins"))
-                    total += temp;
-                if (log.contains("from " + client))
-                    total -= temp;
-                if (log.contains("to " + client))
-                    total += temp;
+        for(Block b : minedBlocks) {
+            List<Transaction> transactions = b.getTransactions();
+            String log;
+            for (Transaction t : transactions) {
+                log = t.getOperation();
+                if (Arrays.stream(log.split(" ")).anyMatch(client::equals)
+                        && (log.contains("obtainCoins") || log.contains("transferMoney"))) {
+                    String[] str = log.split(" ");
+                    double temp = Double.parseDouble(str[str.length - 1]);
+
+                    if (log.contains("obtainCoins"))
+                        total += temp;
+                    if (log.contains("from " + client))
+                        total -= temp;
+                    if (log.contains("to " + client))
+                        total += temp;
+                }
             }
         }
         return total;
@@ -88,6 +92,12 @@ public class BFTServer extends DefaultSingleRecoverable {
             CryptoStuff.verifySignature(CryptoStuff.getPublicKey(b.getPub()), b.getProof(), b.getSig());
 
             blocksDB.addLog(b);
+            List<Transaction> closedTransactions = b.getTransactions();
+            System.out.println("ID: " + b.getId());
+            boolean removed = db.remove(closedTransactions);
+            System.out.println("Removed: " + removed);
+            if(!b.getId().equals("SYSTEM_INIT") && !removed)
+                return false;
             
             double val = b.getTransactions().size() * 5;
             String op = String.format(Transaction.OBTAIN_COIN, b.getId(), val);
