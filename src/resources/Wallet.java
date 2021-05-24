@@ -1,5 +1,6 @@
 package resources;
 
+import api.Block;
 import api.Transaction;
 import api.rest.WalletService;
 import bftsmart.communication.client.ReplyListener;
@@ -30,7 +31,7 @@ public class Wallet implements WalletService {
         asynchSP = new AsynchServiceProxy(id);
     }
 
-    private SystemReply asyncReply(ByteArrayOutputStream byteOut, TOMMessageType type, Transaction transaction) throws InterruptedException {
+    private SystemReply asyncReply(ByteArrayOutputStream byteOut, TOMMessageType type) throws InterruptedException {
         BlockingQueue<SystemReply> replyChain = new LinkedBlockingDeque<>();
         ReplyListener replyListener = new ReplyListenerImp(replyChain, asynchSP);
         asynchSP.invokeAsynchRequest(byteOut.toByteArray(), replyListener, type);
@@ -38,7 +39,6 @@ public class Wallet implements WalletService {
         SystemReply reply = replyChain.take();
         if (reply.getReplies().isEmpty())
             throw new WebApplicationException(Response.Status.UNAUTHORIZED);
-        db.addLog(transaction);
         return reply;
     }
 
@@ -59,7 +59,9 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST, t);
+            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            db.addLog(t);
+            return reply;
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -83,7 +85,9 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST, t);
+            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            db.addLog(t);
+            return reply;
 
         } catch (IOException | InterruptedException e) {
             System.out.println("Exception: " + e.getMessage());
@@ -108,7 +112,9 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.UNORDERED_REQUEST, t);
+            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            db.addLog(t);
+            return reply;
         } catch (IOException | InterruptedException e) {
             System.out.println("Exception: " + e.getMessage());
         }
@@ -133,7 +139,9 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.UNORDERED_REQUEST, t);
+            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            db.addLog(t);
+            return reply;
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -158,7 +166,9 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.UNORDERED_REQUEST, t);
+            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            db.addLog(t);
+            return reply;
         } catch (IOException | InterruptedException e) {
             System.out.println("Exception: " + e.getMessage());
         }
@@ -167,6 +177,24 @@ public class Wallet implements WalletService {
 
     @Override
     public SystemReply obtainLastMinedBlock(byte[] data) {
+    	System.out.println("obtainLastMinedBlock");
+
+        Transaction t = (Transaction) Transaction.deserialize(data);
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
+
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+
+            objOut.writeObject(RequestType.GET_LAST_BLOCK);
+            objOut.writeObject(t);
+
+            objOut.flush();
+            byteOut.flush();
+
+            return asyncReply(byteOut, TOMMessageType.UNORDERED_REQUEST);
+        } catch (IOException | InterruptedException e) {
+            System.out.println("Exception: " + e.getMessage());
+        }
         return null;
     }
 
@@ -177,6 +205,24 @@ public class Wallet implements WalletService {
 
     @Override
     public SystemReply sendMinedBlock(byte[] data) {
+    	System.out.println("sendMinedBlock");
+
+        Block b = (Block) Block.deserialize(data);
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(b.getPub()), b.getProof(), b.getSig());
+
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+
+            objOut.writeObject(RequestType.MINE);
+            objOut.writeObject(b);
+
+            objOut.flush();
+            byteOut.flush();
+
+            return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+        } catch (IOException | InterruptedException e) {
+            System.out.println("Exception: " + e.getMessage());
+        }
         return null;
     }
 }
