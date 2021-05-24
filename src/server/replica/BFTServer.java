@@ -1,5 +1,6 @@
 package server.replica;
 
+import api.Block;
 import api.Transaction;
 import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
@@ -9,17 +10,24 @@ import crypto.CryptoStuff;
 import db.DataBase;
 
 import java.io.*;
+import java.security.KeyPair;
 import java.util.*;
+
+import com.google.gson.Gson;
 
 public class BFTServer extends DefaultSingleRecoverable {
 
-    private final DataBase db;
+    private final DataBase db, blocksDB;
     private final int id;
+    private Gson gson;
 
     public BFTServer(int id) {
-    	String filePath = "src/server/replica/bft_log" + id + ".json";
+    	String filePath = "src/server/replica/bft_log_transactions_" + id + ".json";
         db = new DataBase(filePath);
+        filePath = "src/server/replica/bft_log_blocks_" + id + ".json";
+        blocksDB = new DataBase(filePath);
         this.id = id;
+        gson = new Gson();
         new ServiceReplica(id, this, this);
     }
 
@@ -62,13 +70,41 @@ public class BFTServer extends DefaultSingleRecoverable {
 
             db.addLog(t);
             double val = clientAmount(client);
-            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), val,
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), ""+val,
                     TOMUtil.computeHash(t.getOperation().getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
             objOut.writeObject(reply);
             return true;
         } catch (Exception e) {
             System.out.println("Exception: " + e.getMessage());
+        }
+        return false;
+    }
+    
+    private boolean writeBlock(ObjectInput objIn, ObjectOutput objOut) {
+        try {
+            Block b = (Block) objIn.readObject();
+            
+            CryptoStuff.verifySignature(CryptoStuff.getPublicKey(b.getPub()), b.getProof(), b.getSig());
+
+            blocksDB.addLog(b);
+            
+            double val = b.getTransactions().size() * 5;
+            String op = String.format(Transaction.OBTAIN_COIN, b.getId(), val);
+            
+            KeyPair kp = CryptoStuff.getKeyPair();
+            byte[] sig = CryptoStuff.sign(kp.getPrivate(), op.getBytes());
+            Transaction t = new Transaction(b.getId(), op, sig, kp.getPublic().getEncoded());
+            db.addLog(t);
+            
+            ReplicaReply reply = new ReplicaReply(id, op, ""+val, 
+            		TOMUtil.computeHash(op.getBytes()),
+                    TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), op.getBytes()));
+            System.out.println("return writeBlock");
+            objOut.writeObject(reply);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return false;
     }
@@ -94,7 +130,7 @@ public class BFTServer extends DefaultSingleRecoverable {
             }
             Collections.reverse(clientLogs);
 
-            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), clientLogs,
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), gson.toJson(clientLogs),
                     TOMUtil.computeHash(t.getOperation().getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
 
@@ -115,12 +151,34 @@ public class BFTServer extends DefaultSingleRecoverable {
 
             List<Transaction> logs = db.getLogsTransactions();
             List<Transaction> temp = logs;
-            System.out.println("===>" + (logs.size()-lastN) +" "+logs.size());
-            System.out.println("wtf " + lastN);
             if(lastN < logs.size())
             	temp = logs.subList(logs.size()-lastN, logs.size());
+            
+            List<Transaction> jsonElement = new ArrayList<Transaction>(temp);
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), gson.toJson(jsonElement),
+                    TOMUtil.computeHash(t.getOperation().getBytes()),
+                    TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
 
-            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), new ArrayList<Transaction>(temp),
+            objOut.writeObject(reply);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    private boolean getLastBlock(ObjectInput objIn, ObjectOutput objOut) {
+        try {
+            Transaction t = (Transaction) objIn.readObject();
+            
+            CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
+
+            List<Block> blocks = blocksDB.getLogsBlocks();
+            Block b = blocks.get(blocks.size()-1);
+            System.out.println(b.getId());
+            System.out.println(b.getTransactions().get(0).getOperation());
+
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), gson.toJson(b),
                     TOMUtil.computeHash(t.getOperation().getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
 
@@ -140,7 +198,7 @@ public class BFTServer extends DefaultSingleRecoverable {
             CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
             
             double val = clientAmount(client);
-            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), val,
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), ""+val,
                     TOMUtil.computeHash(t.getOperation().getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
             objOut.writeObject(reply);
@@ -164,6 +222,9 @@ public class BFTServer extends DefaultSingleRecoverable {
                 case OBTAIN_COINS:
                 case TRANSFER:
                     hasReply = writeTransaction(objIn, objOut);
+                    break;
+                case MINE:
+                    hasReply = writeBlock(objIn, objOut);
                     break;
                 case CLIENT_AMOUNT:
                     hasReply = getClientAmount(objIn, objOut);
@@ -208,6 +269,9 @@ public class BFTServer extends DefaultSingleRecoverable {
                     break;
                 case GET_ALL:
                     hasReply = getAllTransactions(objIn, objOut);
+                    break;
+                case GET_LAST_BLOCK:
+                    hasReply = getLastBlock(objIn, objOut);
                     break;
             }
             if (hasReply) {
