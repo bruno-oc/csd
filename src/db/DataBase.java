@@ -3,6 +3,7 @@ package db;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import api.Block;
 import api.Transaction;
 import server.SystemReply;
 
@@ -62,11 +63,26 @@ public class DataBase {
         String jsonString = gson.toJson(logs);
         writeData(filePath, jsonString);
     }
+    
+    public void addLog(Block log) {
+        List<Block> logs = getLogsBlocks();
+        logs.add(log);
+        String jsonString = gson.toJson(logs);
+        writeData(filePath, jsonString);
+    }
 
     public List<Transaction> getLogsTransactions() {
         String jsonString = readData(filePath);
         
         Type type = new TypeToken<List<Transaction>>() {
+        }.getType();
+        return gson.fromJson(jsonString, type);
+    }
+    
+    public List<Block> getLogsBlocks() {
+        String jsonString = readData(filePath);
+        
+        Type type = new TypeToken<List<Block>>() {
         }.getType();
         return gson.fromJson(jsonString, type);
     }
