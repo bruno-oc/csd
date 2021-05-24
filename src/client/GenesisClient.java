@@ -1,16 +1,14 @@
 package client;
 
-import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
-import java.io.ObjectOutputStream;
-import java.security.KeyPair;
-import java.security.KeyStore;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import api.Block;
+import api.Transaction;
+import api.rest.WalletService;
+import bftsmart.tom.util.TOMUtil;
+import crypto.CryptoStuff;
+import org.glassfish.jersey.client.ClientConfig;
+import org.glassfish.jersey.client.ClientProperties;
+import server.InsecureHostnameVerifier;
+import server.SystemReply;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
@@ -24,39 +22,34 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-
-import org.glassfish.jersey.client.ClientConfig;
-import org.glassfish.jersey.client.ClientProperties;
-
-import api.Block;
-import api.Transaction;
-import api.rest.WalletService;
-import bftsmart.tom.util.TOMUtil;
-import crypto.CryptoStuff;
-import server.InsecureHostnameVerifier;
-import server.SystemReply;
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.ObjectOutputStream;
+import java.security.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GenesisClient {
-	
-	public final static int MAX_RETRIES = 3;
+
+    public final static int MAX_RETRIES = 3;
     public final static long RETRY_PERIOD = 10000;
     public final static int CONNECTION_TIMEOUT = 10000;
     public final static int REPLY_TIMEOUT = 6000;
-    
+
     private static String serverURI;
     private static String clientId;
-	
-	public static void main(String[] args) {
-		if (args.length < 3) {
-            System.out.println("Usage: WalletClient <ip> <port> <clientId>");
+
+    public static void main(String[] args) {
+        if (args.length < 2) {
+            System.out.println("Usage: WalletClient <ip> <port>");
             System.exit(-1);
         }
-		serverURI = String.format("https://%s:%s/", args[0], args[1]);
-		clientId = args[2];
-		minerate();
-	}
-	
-	private static SSLContext getContext() throws Exception {
+        serverURI = String.format("https://%s:%s/", args[0], args[1]);
+        clientId = "SYSTEM_INIT";
+        minerate();
+    }
+
+    private static SSLContext getContext() throws Exception {
         KeyStore ks = KeyStore.getInstance("JKS");
         KeyStore ts = KeyStore.getInstance("JKS");
 
@@ -81,8 +74,8 @@ public class GenesisClient {
 
         return sslContext;
     }
-	
-	private static Client startClient() {
+
+    private static Client startClient() {
         HttpsURLConnection.setDefaultHostnameVerifier(new InsecureHostnameVerifier());
         SSLContext context = null;
         try {
@@ -102,8 +95,8 @@ public class GenesisClient {
                 .hostnameVerifier(new InsecureHostnameVerifier())
                 .withConfig(config).build();
     }
-	
-	private static Transaction getSignedTranscation(String clientId, String m, PrivateKey privateKey, PublicKey publicKey) {
+
+    private static Transaction getSignedTranscation(String clientId, String m, PrivateKey privateKey, PublicKey publicKey) {
         // ID||Op||sign(op)
         byte[] op = m.getBytes();
         byte[] signature;
@@ -116,17 +109,17 @@ public class GenesisClient {
         }
         return null;
     }
-	
-	private static void minerate() {
-		KeyPair kp = CryptoStuff.getKeyPair();
-		List<Transaction> list = new ArrayList<Transaction>(2);
-		String bruno = String.format(Transaction.OBTAIN_COIN, "bruno", "500000");
-		String chula = String.format(Transaction.OBTAIN_COIN, "chula", "500000");
-		Transaction t1 = getSignedTranscation("bruno", bruno, kp.getPrivate(), kp.getPublic());
-		Transaction t2 = getSignedTranscation("chula", chula, kp.getPrivate(), kp.getPublic());
-		list.add(t1);
-		list.add(t2);
-		
+
+    private static void minerate() {
+        KeyPair kp = CryptoStuff.getKeyPair();
+        List<Transaction> list = new ArrayList<Transaction>(2);
+        String bruno = String.format(Transaction.OBTAIN_COIN, "bruno", "500000");
+        String chula = String.format(Transaction.OBTAIN_COIN, "chula", "500000");
+        Transaction t1 = getSignedTranscation("bruno", bruno, kp.getPrivate(), kp.getPublic());
+        Transaction t2 = getSignedTranscation("chula", chula, kp.getPrivate(), kp.getPublic());
+        list.add(t1);
+        list.add(t2);
+
         Block block = new Block(list, null);
 
         try {
@@ -152,13 +145,13 @@ public class GenesisClient {
 
     private static boolean proofOfWork(byte[] block) {
         byte[] blockHash = TOMUtil.computeHash(block);
-        for (Byte b: blockHash) {
+        for (Byte b : blockHash) {
             System.out.print(b + " ");
         }
         System.out.println();
         int count = 0;
-        for(byte b : blockHash) {
-            if(b == 0) {
+        for (byte b : blockHash) {
+            if (b == 0) {
                 count++;
                 if (count == 1)
                     return true;
@@ -169,27 +162,26 @@ public class GenesisClient {
     }
 
     private static void sendMinedBlock(Block mined) {
-    	Client restClient = startClient();
-    	WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
+        Client restClient = startClient();
+        WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
-    	byte[] sig = new byte[0];
-    	KeyPair kp = CryptoStuff.getKeyPair();
-    	try {
-			sig = CryptoStuff.sign(kp.getPrivate(), mined.getProof());
-		} catch (Exception e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-    	mined.setId(clientId);
-    	mined.setSig(sig);
-    	mined.setPub(kp.getPublic().getEncoded());    	
-    	
+        byte[] sig = new byte[0];
+        KeyPair kp = CryptoStuff.getKeyPair();
+        try {
+            sig = CryptoStuff.sign(kp.getPrivate(), mined.getProof());
+        } catch (Exception e1) {
+            e1.printStackTrace();
+        }
+        mined.setId(clientId);
+        mined.setSig(sig);
+        mined.setPub(kp.getPublic().getEncoded());
+
         short retries = 0;
         while (retries < MAX_RETRIES) {
             try {
 
                 Response r = target.path("/mine/block").request().accept(MediaType.APPLICATION_JSON)
-                		.post(Entity.entity(Block.serialize(mined), MediaType.APPLICATION_JSON));
+                        .post(Entity.entity(Block.serialize(mined), MediaType.APPLICATION_JSON));
 
                 if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
                     SystemReply reply = r.readEntity(SystemReply.class);
@@ -212,5 +204,5 @@ public class GenesisClient {
             }
         }
     }
-	
+
 }
