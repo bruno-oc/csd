@@ -10,6 +10,7 @@ public class Transaction implements Serializable {
     public static final String CURRENT_AMOUNT = "currentAmount %s";
     public static final String GET_ALL_TRANSCATIONS = "ledgerOfGlobalTransactions";
     public static final String GET_USER_TRANSCATIONS = "ledgerOfClientTransactions %s";
+    public static final String GET_NOT_MINED_TRANSACTIONS= "pickNotMineratedTransaction %s";
     public static final String GET_LAST_MINED_BLOCK= "obtainLastMinedBlock";
 
     private static final long serialVersionUID = 1L;
