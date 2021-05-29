@@ -102,7 +102,6 @@ public class WalletClient {
         System.out.println("5: ledgerOfClientTransactions");
         System.out.println("6: changeServer");
         System.out.println("7: minerateBlock");
-        System.out.println("8: obtain last block");
         System.out.println("h: help");
         System.out.println("q: quit");
     }
@@ -196,12 +195,13 @@ public class WalletClient {
                     start = System.nanoTime();
                     System.out.print("N transactions: ");
                     lastN = Integer.parseInt(s.nextLine());
+                    if(lastN < Block.MINIMUM_TRANSACTIONS) {
+                        System.out.println("Minimum transactions required: " + Block.MINIMUM_TRANSACTIONS);
+                        break;
+                    }
                     w.minerate(lastN);
                     end = System.nanoTime();
                     metrics(start, end);
-                    break;
-                case "8":
-                	w.obtainLastMinedBlock();
                     break;
                 case "h":
                     help();
@@ -417,7 +417,7 @@ public class WalletClient {
 
     private void minerate(int lastN) {
         Block lastMined = obtainLastMinedBlock();
-        List<Transaction> transactionList = ledgerTransactions("", lastN);
+        List<Transaction> transactionList = pickTransactions(lastN);
 
         try {
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -442,6 +442,48 @@ public class WalletClient {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private List<Transaction> pickTransactions(int n) {
+        String m = String.format(Transaction.GET_NOT_MINED_TRANSACTIONS, n);
+        Transaction output = getSignedTranscation(m);
+
+        WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
+
+        short retries = 0;
+
+        while (retries < MAX_RETRIES) {
+            try {
+                Response r = target.path("/mine/transactions").queryParam("n", n).request().accept(MediaType.APPLICATION_JSON)
+                        .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON_TYPE));
+
+                if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
+                    SystemReply reply = r.readEntity(SystemReply.class);
+                    db.addLog(reply);
+                    String json = reply.getReplies().get(0).getValue();
+                    System.out.println(json);
+
+                    Type type = new TypeToken<List<Transaction>>() {
+                    }.getType();
+
+                    return gson.fromJson(json, type);
+                } else {
+                    retries++;
+                    System.out.println("Error, HTTP error status: " + r.getStatus());
+                }
+            } catch (ProcessingException pe) { // Error in communication with server
+                System.out.println("Timeout occurred.");
+                System.out.println(pe.getMessage()); // Could be removed
+                retries++;
+                try {
+                    Thread.sleep(RETRY_PERIOD); // wait until attempting again.
+                } catch (InterruptedException e) {
+                    // Nothing to be done here, if this happens we will just retry sooner.
+                }
+                System.out.println("Retrying to execute request.");
+            }
+        }
+        return null;
     }
 
     private boolean proofOfWork(byte[] block) {
