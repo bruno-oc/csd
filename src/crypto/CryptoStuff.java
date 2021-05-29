@@ -3,13 +3,7 @@ package crypto;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import java.io.FileInputStream;
-import java.security.Key;
-import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.KeyStore;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.Signature;
+import java.security.*;
 import java.security.spec.X509EncodedKeySpec;
 
 public class CryptoStuff {
@@ -29,18 +23,9 @@ public class CryptoStuff {
 	
 	public static KeyPair getKeyPair() {
     	try {
-    		FileInputStream f = new FileInputStream("security/server.ks");
-            KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
-            keystore.load(f, "password".toCharArray());
-            String alias = "server";
-            Key key = keystore.getKey(alias, "password".toCharArray());
-            if (key instanceof PrivateKey) {	
-	            // Get public key
-	            PublicKey publicKey = keystore.getCertificate(alias).getPublicKey();
-	
-	            // Return a key pair
-	            return new KeyPair(publicKey, (PrivateKey) key);
-            }
+			KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+			kpg.initialize(2048);
+			return kpg.generateKeyPair();
     	} catch(Exception e) {
     		e.printStackTrace();
     	}
