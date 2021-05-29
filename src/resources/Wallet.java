@@ -200,7 +200,29 @@ public class Wallet implements WalletService {
 
     @Override
     public SystemReply pickNotMineratedTransaction(int n, byte[] data) {
-        return ledgerOfGlobalTransactions(n, data);
+        System.out.println("pickNotMineratedTransaction");
+
+        Transaction t = (Transaction) Transaction.deserialize(data);
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
+
+
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+
+            objOut.writeObject(RequestType.GET_NOT_MINED);
+            objOut.writeObject(t);
+            objOut.writeObject(n);
+
+            objOut.flush();
+            byteOut.flush();
+
+            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            db.addLog(t);
+            return reply;
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override
