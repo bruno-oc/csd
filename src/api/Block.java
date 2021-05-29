@@ -5,6 +5,8 @@ import java.util.List;
 
 public class Block implements Serializable {
 
+    public static final int MINIMUM_TRANSACTIONS = 2;
+
     private static final long serialVersionUID = 3L;
 
     private final List<Transaction> transactions;
