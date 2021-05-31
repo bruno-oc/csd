@@ -84,15 +84,46 @@ public class BFTServer extends DefaultSingleRecoverable {
         return false;
     }
 
+    private boolean proofOfWork(Block block) {
+        System.out.println(block);
+        try {
+            byte[] blockHash = TOMUtil.computeHash(Block.serialize(block));
+            System.out.println("block in bytes:");
+            for (Byte b : blockHash) {
+                System.out.print(b + " ");
+            }
+            System.out.println();
+            int count = 0;
+            for (byte b : blockHash) {
+                if (b == 0) {
+                    count++;
+                    if (count == 2)
+                        return true;
+                } else
+                    return false;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
     private boolean writeBlock(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Block b = (Block) objIn.readObject();
 
-            CryptoStuff.verifySignature(CryptoStuff.getPublicKey(b.getPub()), b.getProof(), b.getSig());
+            CryptoStuff.verifySignature(CryptoStuff.getPublicKey(b.getPub()), Transaction.serialize(b.getTransactions()), b.getSig());
 
             List<Transaction> closedTransactions = b.getTransactions();
-            if(closedTransactions.size() < Block.MINIMUM_TRANSACTIONS) {
+            if (closedTransactions.size() < Block.MINIMUM_TRANSACTIONS) {
                 System.out.println("Block does not contain the minimum transactions!");
+                return false;
+            }
+
+            if (!proofOfWork(b)) {
+                System.out.println("Block does not prove the work!");
                 return false;
             }
 
