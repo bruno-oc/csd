@@ -420,12 +420,22 @@ public class WalletClient {
         List<Transaction> transactionList = pickTransactions(lastN);
 
         try {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(bos);
-            oos.writeObject(lastMined);
-            byte[] lastMinedBytes = bos.toByteArray();
+            byte[] lastMinedBytes = Block.serialize(lastMined);
+
+            KeyPair kp = CryptoStuff.getKeyPair();
 
             Block minedBlock = new Block(transactionList, TOMUtil.computeHash(lastMinedBytes));
+            minedBlock.setId(clientId);
+            minedBlock.setPub(kp.getPublic().getEncoded());
+            byte[] sig = new byte[0];
+
+            try {
+                sig = CryptoStuff.sign(kp.getPrivate(), Transaction.serialize(minedBlock.getTransactions()));
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+            minedBlock.setSig(sig);
+
             boolean found = false;
             byte[] nonce = new byte[8];
 
@@ -433,11 +443,11 @@ public class WalletClient {
                 SecureRandom.getInstanceStrong().nextBytes(nonce);
                 minedBlock.setProof(nonce);
 
-                oos.writeObject(lastMined);
-                if (proofOfWork(bos.toByteArray())) {
+                if (proofOfWork(Block.serialize(minedBlock))) {
                     found = true;
                 }
             }
+
             sendMinedBlock(minedBlock);
         } catch (Exception e) {
             e.printStackTrace();
@@ -551,17 +561,6 @@ public class WalletClient {
     private void sendMinedBlock(Block mined) {
         Client restClient = startClient();
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
-
-        byte[] sig = new byte[0];
-        KeyPair kp = CryptoStuff.getKeyPair();
-        try {
-            sig = CryptoStuff.sign(kp.getPrivate(), mined.getProof());
-        } catch (Exception e1) {
-            e1.printStackTrace();
-        }
-        mined.setId(clientId);
-        mined.setSig(sig);
-        mined.setPub(kp.getPublic().getEncoded());
 
         short retries = 0;
         while (retries < MAX_RETRIES) {

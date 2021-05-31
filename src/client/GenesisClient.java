@@ -112,7 +112,7 @@ public class GenesisClient {
 
     private static void minerate() {
         KeyPair kp = CryptoStuff.getKeyPair();
-        List<Transaction> list = new ArrayList<Transaction>(2);
+        List<Transaction> list = new ArrayList<>(2);
         String bruno = String.format(Transaction.OBTAIN_COIN, "bruno", "500000");
         String chula = String.format(Transaction.OBTAIN_COIN, "chula", "500000");
         Transaction t1 = getSignedTranscation("bruno", bruno, kp.getPrivate(), kp.getPublic());
@@ -121,21 +121,26 @@ public class GenesisClient {
         list.add(t2);
 
         Block block = new Block(list, null);
+        block.setId(clientId);
+        block.setPub(kp.getPublic().getEncoded());
+
+        byte[] sig = new byte[0];
+        try {
+            sig = CryptoStuff.sign(kp.getPrivate(), Transaction.serialize(block.getTransactions()));
+        } catch (Exception e1) {
+            e1.printStackTrace();
+        }
+        block.setSig(sig);
 
         try {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(bos);
-
             boolean found = false;
             byte[] nonce = new byte[8];
             while (!found) {
                 SecureRandom.getInstanceStrong().nextBytes(nonce);
                 block.setProof(nonce);
 
-                oos.writeObject(block);
-                if (proofOfWork(bos.toByteArray())) {
+                if (proofOfWork(Block.serialize(block)))
                     found = true;
-                }
             }
             sendMinedBlock(block);
         } catch (Exception e) {
@@ -153,7 +158,7 @@ public class GenesisClient {
         for (byte b : blockHash) {
             if (b == 0) {
                 count++;
-                if (count == 1)
+                if (count == 2)
                     return true;
             } else
                 return false;
@@ -164,17 +169,6 @@ public class GenesisClient {
     private static void sendMinedBlock(Block mined) {
         Client restClient = startClient();
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
-
-        byte[] sig = new byte[0];
-        KeyPair kp = CryptoStuff.getKeyPair();
-        try {
-            sig = CryptoStuff.sign(kp.getPrivate(), mined.getProof());
-        } catch (Exception e1) {
-            e1.printStackTrace();
-        }
-        mined.setId(clientId);
-        mined.setSig(sig);
-        mined.setPub(kp.getPublic().getEncoded());
 
         short retries = 0;
         while (retries < MAX_RETRIES) {
