@@ -230,7 +230,7 @@ public class Wallet implements WalletService {
     	System.out.println("sendMinedBlock");
 
         Block b = (Block) Block.deserialize(data);
-        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(b.getPub()), b.getProof(), b.getSig());
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(b.getPub()), Transaction.serialize(b.getTransactions()), b.getSig());
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
