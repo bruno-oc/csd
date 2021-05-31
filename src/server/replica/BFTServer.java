@@ -84,32 +84,6 @@ public class BFTServer extends DefaultSingleRecoverable {
         return false;
     }
 
-    private boolean proofOfWork(Block block) {
-        System.out.println(block);
-        try {
-            byte[] blockHash = TOMUtil.computeHash(Block.serialize(block));
-            System.out.println("block in bytes:");
-            for (Byte b : blockHash) {
-                System.out.print(b + " ");
-            }
-            System.out.println();
-            int count = 0;
-            for (byte b : blockHash) {
-                if (b == 0) {
-                    count++;
-                    if (count == 2)
-                        return true;
-                } else
-                    return false;
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
     private boolean writeBlock(ObjectInput objIn, ObjectOutput objOut) {
         try {
             Block b = (Block) objIn.readObject();
@@ -122,7 +96,7 @@ public class BFTServer extends DefaultSingleRecoverable {
                 return false;
             }
 
-            if (!proofOfWork(b)) {
+            if (!Block.proofOfWork(b)) {
                 System.out.println("Block does not prove the work!");
                 return false;
             }

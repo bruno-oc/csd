@@ -443,7 +443,7 @@ public class WalletClient {
                 SecureRandom.getInstanceStrong().nextBytes(nonce);
                 minedBlock.setProof(nonce);
 
-                if (proofOfWork(Block.serialize(minedBlock))) {
+                if (Block.proofOfWork(minedBlock)) {
                     found = true;
                 }
             }
@@ -494,25 +494,6 @@ public class WalletClient {
             }
         }
         return null;
-    }
-
-    private boolean proofOfWork(byte[] block) {
-        byte[] blockHash = TOMUtil.computeHash(block);
-        for (Byte b: blockHash) {
-            System.out.print(b + " ");
-        }
-        System.out.println();
-        int count = 0;
-        for(byte b : blockHash) {
-            if(b == 0) {
-                System.out.println("first byte: " + b);
-                count++;
-                if (count == 2)
-                    return true;
-            } else
-                return false;
-        }
-        return false;
     }
 
     public Block obtainLastMinedBlock() {

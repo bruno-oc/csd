@@ -139,31 +139,13 @@ public class GenesisClient {
                 SecureRandom.getInstanceStrong().nextBytes(nonce);
                 block.setProof(nonce);
 
-                if (proofOfWork(Block.serialize(block)))
+                if (Block.proofOfWork(block))
                     found = true;
             }
             sendMinedBlock(block);
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    private static boolean proofOfWork(byte[] block) {
-        byte[] blockHash = TOMUtil.computeHash(block);
-        for (Byte b : blockHash) {
-            System.out.print(b + " ");
-        }
-        System.out.println();
-        int count = 0;
-        for (byte b : blockHash) {
-            if (b == 0) {
-                count++;
-                if (count == 2)
-                    return true;
-            } else
-                return false;
-        }
-        return false;
     }
 
     private static void sendMinedBlock(Block mined) {
