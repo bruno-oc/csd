@@ -2,6 +2,7 @@ package api;
 
 import java.io.*;
 import java.util.Arrays;
+import java.util.List;
 
 public class Transaction implements Serializable {
 
@@ -25,29 +26,6 @@ public class Transaction implements Serializable {
         this.operation = operation;
         this.sig = sig;
         this.pub = pub;
-    }
-
-    public static byte[] serialize(Transaction obj) {
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            ObjectOutputStream os = new ObjectOutputStream(out);
-            os.writeObject(obj);
-            return out.toByteArray();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public static Object deserialize(byte[] data) {
-        try {
-            ByteArrayInputStream in = new ByteArrayInputStream(data);
-            ObjectInputStream is = new ObjectInputStream(in);
-            return is.readObject();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     public String getID() {
@@ -75,7 +53,8 @@ public class Transaction implements Serializable {
         return "Transaction{" +
                 "id='" + id + '\'' +
                 ", operation='" + operation + '\'' +
-                ", sig=" + (sig != null ? sig.length : "none") +
+                ", sig=" + Arrays.toString(sig) +
+                ", pub=" + Arrays.toString(pub) +
                 '}';
     }
 
@@ -87,9 +66,7 @@ public class Transaction implements Serializable {
         Transaction that = (Transaction) o;
 
         if (!id.equals(that.id)) return false;
-        if (!operation.equals(that.operation)) return false;
-        if (!Arrays.equals(sig, that.sig)) return false;
-        return Arrays.equals(pub, that.pub);
+        return operation.equals(that.operation);
     }
 
     @Override
@@ -100,4 +77,40 @@ public class Transaction implements Serializable {
         result = 31 * result + Arrays.hashCode(pub);
         return result;
     }
+
+    public static byte[] serialize(Transaction obj) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ObjectOutputStream os = new ObjectOutputStream(out);
+            os.writeObject(obj);
+            return out.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Object deserialize(byte[] data) {
+        try {
+            ByteArrayInputStream in = new ByteArrayInputStream(data);
+            ObjectInputStream is = new ObjectInputStream(in);
+            return is.readObject();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static byte[] serialize(List<Transaction> obj) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ObjectOutputStream os = new ObjectOutputStream(out);
+            os.writeObject(obj);
+            return out.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 }
