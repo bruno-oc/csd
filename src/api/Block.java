@@ -3,6 +3,8 @@ package api;
 import java.io.*;
 import java.util.List;
 
+import bftsmart.tom.util.TOMUtil;
+
 public class Block implements Serializable {
 
     public static final int MINIMUM_TRANSACTIONS = 2;
@@ -83,6 +85,31 @@ public class Block implements Serializable {
 
     public void setId(String id) {
         this.id = id;
+    }
+    
+    public static boolean proofOfWork(Block block) {
+        try {
+            byte[] blockHash = TOMUtil.computeHash(Block.serialize(block));
+            System.out.println("block in bytes:");
+            for (Byte b : blockHash) {
+                System.out.print(b + " ");
+            }
+            System.out.println();
+            int count = 0;
+            for (byte b : blockHash) {
+                if (b == 0) {
+                    count++;
+                    if (count == 2)
+                        return true;
+                } else
+                    return false;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return false;
     }
 
 }
