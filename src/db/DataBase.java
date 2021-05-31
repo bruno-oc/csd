@@ -113,8 +113,10 @@ public class DataBase {
     public boolean remove(List<Transaction> closedTransactions) {
         List<Transaction> logs = getLogsTransactions();
         for (Transaction t : closedTransactions)
-            if(!logs.contains(t))
+            if(!logs.contains(t)) {
+                System.out.println("DOESNT CONTAIN TRANSACTION: " + t.getOperation());
                 return false;
+            }
         for (Transaction t : closedTransactions)
             logs.remove(t);
         String jsonString = gson.toJson(logs);
