@@ -58,4 +58,17 @@ public interface WalletService {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     SystemReply sendMinedBlock(byte[] data);
+    
+    @POST
+    @Path("/smart-contract/install/{who}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    SystemReply installSmartContract(@PathParam("who") String who, byte[] data);
+    
+    @POST
+    @Path("/transfer/{from}/{scontract_ref}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    SystemReply transferMoneyWithSmartContractRef (@PathParam("from") String  from, @PathParam("scontract_ref") String  scontract_ref,  @QueryParam("to") String to, byte[] data);
+    
 }
