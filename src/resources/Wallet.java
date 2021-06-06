@@ -1,6 +1,7 @@
 package resources;
 
 import api.Block;
+import api.SmartContract;
 import api.Transaction;
 import api.rest.WalletService;
 import bftsmart.communication.client.ReplyListener;
@@ -247,4 +248,53 @@ public class Wallet implements WalletService {
         }
         return null;
     }
+
+	@Override
+	public SystemReply installSmartContract(String who, byte[] data) {
+		System.out.println("installSmartContract");
+
+        SmartContract sc = (SmartContract) SmartContract.deserialize(data);
+        Transaction t = sc.getTrans();
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
+        
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+                ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+
+               objOut.writeObject(RequestType.INSTALL_SMART_CONTRACT);
+               objOut.writeObject(sc);
+
+               objOut.flush();
+               byteOut.flush();
+
+               return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+           } catch (IOException | InterruptedException e) {
+               System.out.println("Exception: " + e.getMessage());
+           }
+           return null;
+	}
+
+	@Override
+	public SystemReply transferMoneyWithSmartContractRef(String from, String scontract_ref, String to, byte[] data) {
+		System.out.println("transferMoneyWithSmartContractRef");
+
+        Transaction t = (Transaction) Transaction.deserialize(data);
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
+        
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+                ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+
+               objOut.writeObject(RequestType.SMART_CONTRACT);
+               objOut.writeObject(scontract_ref);
+               objOut.writeObject(t);
+               objOut.writeObject(from);
+
+               objOut.flush();
+               byteOut.flush();
+
+               return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+           } catch (IOException | InterruptedException e) {
+               System.out.println("Exception: " + e.getMessage());
+           }
+           return null;
+	}
 }
