@@ -1,6 +1,7 @@
 package client;
 
 import api.Block;
+import api.SmartContract;
 import api.Transaction;
 import api.rest.WalletService;
 import bftsmart.tom.util.TOMUtil;
@@ -102,6 +103,8 @@ public class WalletClient {
         System.out.println("5: ledgerOfClientTransactions");
         System.out.println("6: changeServer");
         System.out.println("7: minerateBlock");
+        System.out.println("8: installSmartContract");
+        System.out.println("9: transferMoneyWithSmartContractRef");
         System.out.println("h: help");
         System.out.println("q: quit");
     }
@@ -155,7 +158,7 @@ public class WalletClient {
                     amount = Double.parseDouble(s.nextLine());
 
                     start = System.nanoTime();
-                    w.transferMoney(who, to, amount);
+                    w.transferMoney(who, to, amount, "");
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
@@ -191,15 +194,39 @@ public class WalletClient {
                     System.out.print("port: ");
                     port = Integer.parseInt(s.nextLine());
                     changeServer(ip, port);
+                    break;
                 case "7":
-                    start = System.nanoTime();
                     System.out.print("N transactions: ");
                     lastN = Integer.parseInt(s.nextLine());
                     if(lastN < Block.MINIMUM_TRANSACTIONS) {
                         System.out.println("Minimum transactions required: " + Block.MINIMUM_TRANSACTIONS);
                         break;
                     }
+                    start = System.nanoTime();
                     w.minerate(lastN);
+                    end = System.nanoTime();
+                    metrics(start, end);
+                    break;
+                case "8":
+                	System.out.print("who: ");
+                    who = s.nextLine();
+                    start = System.nanoTime();
+                    w.installSmartContract(who);
+                    end = System.nanoTime();
+                    metrics(start, end);
+                    break;
+                case "9":
+                	System.out.print("from: ");
+                    who = s.nextLine();
+                    System.out.print("to: ");
+                    to = s.nextLine();
+                    System.out.print("amount: ");
+                    amount = Double.parseDouble(s.nextLine());
+                    System.out.print("scontract_ref: ");
+                    String scontract_ref = s.nextLine();
+
+                    start = System.nanoTime();
+                    w.transferMoney(who, to, amount, scontract_ref);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
@@ -289,7 +316,7 @@ public class WalletClient {
         }
     }
 
-    public void transferMoney(String from, String to, double amount) {
+    public void transferMoney(String from, String to, double amount, String scontract_ref) {
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         String m = String.format(Transaction.TRANSFER, from, to, amount);
@@ -301,7 +328,7 @@ public class WalletClient {
         while (retries < MAX_RETRIES) {
             try {
 
-                Response r = target.path("/transfer/" + from).queryParam("to", to).request()
+                Response r = target.path("/transfer/" + from + "/" + scontract_ref).queryParam("to", to).request()
                         .accept(MediaType.APPLICATION_JSON)
                         .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON));
 
@@ -570,4 +597,41 @@ public class WalletClient {
             }
         }
     }
+    
+    public void installSmartContract(String who) {
+    	Client restClient = startClient();
+        WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
+        
+        String m = String.format(SmartContract.INSTALL, who);
+        Transaction t = getSignedTranscation(m);
+        SmartContract output = new SmartContract(t);
+        
+        short retries = 0;
+        while (retries < MAX_RETRIES) {
+            try {
+                Response r = target.path("/smart-contract/install/" + who).request().accept(MediaType.APPLICATION_JSON)
+                        .post(Entity.entity(SmartContract.serialize(output), MediaType.APPLICATION_JSON));
+
+                if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
+                    SystemReply reply = r.readEntity(SystemReply.class);
+                    System.out.println("scontract_ref: " + reply.getReplies().get(0).getValue());
+                    return;
+                } else {
+                    System.out.println("Error, HTTP error status: " + r.getStatus());
+                    retries++;
+                }
+            } catch (ProcessingException pe) { // Error in communication with server
+                System.out.println("Timeout occurred.");
+                System.out.println(pe.getMessage()); // Could be removed
+                retries++;
+                try {
+                    Thread.sleep(RETRY_PERIOD); // wait until attempting again.
+                } catch (InterruptedException e) {
+                    // Nothing to be done here, if this happens we will just retry sooner.
+                }
+                System.out.println("Retrying to execute request.");
+            }
+        }
+    }   
+    
 }
