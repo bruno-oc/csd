@@ -1,0 +1,1 @@
+java -Djava.security.manager -Djava.security.policy=endorser.policy -cp target/WA-1-jar-with-dependencies.jar server.endorser.BFTEndorser $@ 
