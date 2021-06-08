@@ -1,6 +1,7 @@
 package db;
 
 import api.Block;
+import api.SmartContract;
 import api.Transaction;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -122,5 +123,21 @@ public class DataBase {
         String jsonString = gson.toJson(logs);
         writeData(filePath, jsonString);
         return true;
+    }
+
+    public List<SmartContract> getSmartContracts() {
+        String jsonString = readData(filePath);
+
+        Type type = new TypeToken<List<SmartContract>>() {
+        }.getType();
+        return gson.fromJson(jsonString, type);
+    }
+
+    public String addSmartContract(SmartContract sc) {
+        List<SmartContract> logs = getSmartContracts();
+        logs.add(sc);
+        String jsonString = gson.toJson(logs);
+        writeData(filePath, jsonString);
+        return "" + (logs.size() - 1);
     }
 }
