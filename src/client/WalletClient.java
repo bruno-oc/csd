@@ -567,7 +567,6 @@ public class WalletClient {
     }
 
     private void sendMinedBlock(Block mined) {
-        Client restClient = startClient();
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         short retries = 0;
@@ -599,7 +598,6 @@ public class WalletClient {
     }
     
     public void installSmartContract(String who) {
-    	Client restClient = startClient();
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
         
         String m = String.format(SmartContract.INSTALL, who);
