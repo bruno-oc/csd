@@ -17,11 +17,10 @@ import java.util.*;
 
 public class BFTServer extends DefaultSingleRecoverable {
 
-    private final DataBase db, blocksDB;
+    private final DataBase db;
+    private final DataBase blocksDB;
     private final int id;
     private Gson gson;
-    
-    private List<SmartContract> smartContracts = new LinkedList<SmartContract>();
 
     public BFTServer(int id) {
         String filePath = "src/server/replica/bft_log_transactions_" + id + ".json";
@@ -30,7 +29,8 @@ public class BFTServer extends DefaultSingleRecoverable {
         blocksDB = new DataBase(filePath);
         this.id = id;
         gson = new Gson();
-        new ServiceReplica(id, this, this);
+
+        new ServiceReplica(id, "config/server", this, this, null, null, null);
     }
 
     public static void main(String[] args) {
@@ -259,43 +259,28 @@ public class BFTServer extends DefaultSingleRecoverable {
         }
         return false;
     }
-    
-    private boolean installSmartContract(ObjectInput objIn, ObjectOutput objOut) {
-        try {
-            SmartContract sc = (SmartContract) objIn.readObject();
-            Transaction t = sc.getTrans();
-            
-            CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
-            
-            smartContracts.add(sc);            
-            
-            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), ""+(smartContracts.size()-1),
-                    TOMUtil.computeHash(t.getOperation().getBytes()),
-                    TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
-            
-            objOut.writeObject(reply);
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-    
+
     private boolean writeTransactionWithSmartContract(ObjectInput objIn, ObjectOutput objOut) {
         try {
-        	String ref = (String) objIn.readObject();
-        	int index = Integer.parseInt(ref);
+            int serverId = (Integer) objIn.readObject();
+
+            String ref = (String) objIn.readObject();
+            int index = Integer.parseInt(ref);
+
             Transaction t = (Transaction) objIn.readObject();
             String client = (String) objIn.readObject();
 
             CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
+            DataBase smartContractsDB = new DataBase("src/server/verified_contracts_" + serverId + ".json");
+            List<SmartContract> smartContracts = smartContractsDB.getSmartContracts();
+
             SmartContract sc = smartContracts.get(index);
-            if(!sc.run(t) && index < smartContracts.size()) {
-            	System.out.println("Smart Contract Unauthorized");
-            	return false;
+            if (!sc.run(t) && index < smartContracts.size()) {
+                System.out.println("Smart Contract Unauthorized");
+                return false;
             }
-            
+
             db.addLog(t);
             double val = clientAmount(client);
             ReplicaReply reply = new ReplicaReply(id, t.getOperation(), "" + val,
@@ -338,12 +323,9 @@ public class BFTServer extends DefaultSingleRecoverable {
                 case GET_NOT_MINED:
                     hasReply = getNotMinedTransactions(objIn, objOut);
                     break;
-                case INSTALL_SMART_CONTRACT:
-                    hasReply = installSmartContract(objIn, objOut);
-                    break;
                 case SMART_CONTRACT:
-                	hasReply = writeTransactionWithSmartContract(objIn, objOut);
-                	break;
+                    hasReply = writeTransactionWithSmartContract(objIn, objOut);
+                    break;
             }
             if (hasReply) {
                 objOut.flush();
