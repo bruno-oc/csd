@@ -23,16 +23,23 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 
 public class Wallet implements WalletService {
-    private final DataBase db;
-    private final AsynchServiceProxy asynchSP;
+    private final DataBase db, smartContractsDB;
+    private final AsynchServiceProxy serverAsynchSP, endorserAsynchSP;
+    private final int id;
 
     public Wallet(int id) {
+        this.id = id;
+
         String filePath = "src/server/server_log" + id + ".json";
         db = new DataBase(filePath);
-        asynchSP = new AsynchServiceProxy(id);
+        filePath = "src/server/verified_contracts_" + id + ".json";
+        smartContractsDB = new DataBase(filePath);
+
+        serverAsynchSP = new AsynchServiceProxy(id, "config/server");
+        endorserAsynchSP = new AsynchServiceProxy(id, "config/endorser");
     }
 
-    private SystemReply asyncReply(ByteArrayOutputStream byteOut, TOMMessageType type) throws InterruptedException {
+    private SystemReply asyncReply(AsynchServiceProxy asynchSP, ByteArrayOutputStream byteOut, TOMMessageType type) throws InterruptedException {
         BlockingQueue<SystemReply> replyChain = new LinkedBlockingDeque<>();
         ReplyListener replyListener = new ReplyListenerImp(replyChain, asynchSP);
         asynchSP.invokeAsynchRequest(byteOut.toByteArray(), replyListener, type);
@@ -60,7 +67,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            SystemReply reply = asyncReply(serverAsynchSP, byteOut, TOMMessageType.ORDERED_REQUEST);
             db.addLog(t);
             return reply;
         } catch (IOException | InterruptedException e) {
@@ -86,7 +93,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            SystemReply reply = asyncReply(serverAsynchSP, byteOut, TOMMessageType.ORDERED_REQUEST);
             db.addLog(t);
             return reply;
 
@@ -113,7 +120,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            SystemReply reply = asyncReply(serverAsynchSP, byteOut, TOMMessageType.ORDERED_REQUEST);
             db.addLog(t);
             return reply;
         } catch (IOException | InterruptedException e) {
@@ -140,7 +147,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            SystemReply reply = asyncReply(serverAsynchSP, byteOut, TOMMessageType.ORDERED_REQUEST);
             db.addLog(t);
             return reply;
         } catch (IOException | InterruptedException e) {
@@ -167,7 +174,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            SystemReply reply = asyncReply(serverAsynchSP, byteOut, TOMMessageType.ORDERED_REQUEST);
             db.addLog(t);
             return reply;
         } catch (IOException | InterruptedException e) {
@@ -178,7 +185,7 @@ public class Wallet implements WalletService {
 
     @Override
     public SystemReply obtainLastMinedBlock(byte[] data) {
-    	System.out.println("obtainLastMinedBlock");
+        System.out.println("obtainLastMinedBlock");
 
         Transaction t = (Transaction) Transaction.deserialize(data);
         CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
@@ -192,7 +199,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.UNORDERED_REQUEST);
+            return asyncReply(serverAsynchSP, byteOut, TOMMessageType.UNORDERED_REQUEST);
         } catch (IOException | InterruptedException e) {
             System.out.println("Exception: " + e.getMessage());
         }
@@ -217,7 +224,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            SystemReply reply = asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            SystemReply reply = asyncReply(serverAsynchSP, byteOut, TOMMessageType.ORDERED_REQUEST);
             db.addLog(t);
             return reply;
         } catch (IOException | InterruptedException e) {
@@ -228,7 +235,7 @@ public class Wallet implements WalletService {
 
     @Override
     public SystemReply sendMinedBlock(byte[] data) {
-    	System.out.println("sendMinedBlock");
+        System.out.println("sendMinedBlock");
 
         Block b = (Block) Block.deserialize(data);
         CryptoStuff.verifySignature(CryptoStuff.getPublicKey(b.getPub()), Transaction.serialize(b.getTransactions()), b.getSig());
@@ -242,59 +249,62 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
+            return asyncReply(serverAsynchSP, byteOut, TOMMessageType.ORDERED_REQUEST);
         } catch (IOException | InterruptedException e) {
             System.out.println("Exception: " + e.getMessage());
         }
         return null;
     }
 
-	@Override
-	public SystemReply installSmartContract(String who, byte[] data) {
-		System.out.println("installSmartContract");
+    @Override
+    public SystemReply installSmartContract(String who, byte[] data) {
+        System.out.println("installSmartContract");
 
         SmartContract sc = (SmartContract) SmartContract.deserialize(data);
         Transaction t = sc.getTrans();
         CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
-        
+
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-                ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
-               objOut.writeObject(RequestType.INSTALL_SMART_CONTRACT);
-               objOut.writeObject(sc);
+            objOut.writeObject(RequestType.INSTALL_SMART_CONTRACT);
+            objOut.writeObject(sc);
 
-               objOut.flush();
-               byteOut.flush();
+            objOut.flush();
+            byteOut.flush();
 
-               return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
-           } catch (IOException | InterruptedException e) {
-               System.out.println("Exception: " + e.getMessage());
-           }
-           return null;
-	}
+            SystemReply reply = asyncReply(endorserAsynchSP, byteOut, TOMMessageType.ORDERED_REQUEST);
+            smartContractsDB.addSmartContract(sc);
+            return reply;
+        } catch (IOException | InterruptedException e) {
+            System.out.println("Exception: " + e.getMessage());
+        }
+        return null;
+    }
 
-	@Override
-	public SystemReply transferMoneyWithSmartContractRef(String from, String scontract_ref, String to, byte[] data) {
-		System.out.println("transferMoneyWithSmartContractRef");
+    @Override
+    public SystemReply transferMoneyWithSmartContractRef(String from, String scontract_ref, String to, byte[] data) {
+        System.out.println("transferMoneyWithSmartContractRef");
 
         Transaction t = (Transaction) Transaction.deserialize(data);
         CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
-        
+
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-                ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
 
-               objOut.writeObject(RequestType.SMART_CONTRACT);
-               objOut.writeObject(scontract_ref);
-               objOut.writeObject(t);
-               objOut.writeObject(from);
+            objOut.writeObject(RequestType.SMART_CONTRACT);
+            objOut.writeObject(id);
+            objOut.writeObject(scontract_ref);
+            objOut.writeObject(t);
+            objOut.writeObject(from);
 
-               objOut.flush();
-               byteOut.flush();
+            objOut.flush();
+            byteOut.flush();
 
-               return asyncReply(byteOut, TOMMessageType.ORDERED_REQUEST);
-           } catch (IOException | InterruptedException e) {
-               System.out.println("Exception: " + e.getMessage());
-           }
-           return null;
-	}
+            return asyncReply(serverAsynchSP, byteOut, TOMMessageType.ORDERED_REQUEST);
+        } catch (IOException | InterruptedException e) {
+            System.out.println("Exception: " + e.getMessage());
+        }
+        return null;
+    }
 }
