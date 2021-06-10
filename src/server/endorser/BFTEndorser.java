@@ -6,26 +6,25 @@ import bftsmart.tom.MessageContext;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.server.defaultservices.DefaultSingleRecoverable;
 import bftsmart.tom.util.TOMUtil;
-import com.google.gson.Gson;
 import crypto.CryptoStuff;
-import db.DataBase;
 import server.replica.ReplicaReply;
 import server.replica.RequestType;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.LinkedList;
+import java.util.List;
 
 public class BFTEndorser extends DefaultSingleRecoverable {
 
-    private final DataBase smartContractsDB;
+    private static final String FILE_PATH = "src/server/endorser/contracts_%s.json";
+
     private final int id;
-    private Gson gson;
 
     public BFTEndorser(int id) {
-        String filePath = "src/server/endorser/contracts_" + id + ".json";
-        smartContractsDB = new DataBase(filePath);
         this.id = id;
-        gson = new Gson();
-
         new ServiceReplica(id, "config/endorser", this, this, null, null, null);
     }
 
@@ -35,6 +34,29 @@ public class BFTEndorser extends DefaultSingleRecoverable {
             System.exit(-1);
         }
         new BFTEndorser(Integer.parseInt(args[0]));
+    }
+
+    private static Object deserialize(byte[] data) {
+        try {
+            ByteArrayInputStream in = new ByteArrayInputStream(data);
+            ObjectInputStream is = new ObjectInputStream(in);
+            return is.readObject();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private static byte[] serialize(List<SmartContract> obj) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ObjectOutputStream os = new ObjectOutputStream(out);
+            os.writeObject(obj);
+            return out.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override
@@ -66,6 +88,43 @@ public class BFTEndorser extends DefaultSingleRecoverable {
         return reply;
     }
 
+    private String addSmartContract(SmartContract sc) {
+        Path path = Paths.get(String.format(FILE_PATH, id));
+
+        File f = new File(String.format(FILE_PATH, id));
+        if (!f.exists()) {
+            try {
+                f.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        byte[] fileContent = null;
+        try {
+            fileContent = Files.readAllBytes(path);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        List<SmartContract> list;
+        if (fileContent == null || fileContent.length == 0)
+            list = new LinkedList<>();
+        else
+            list = (List<SmartContract>) deserialize(fileContent);
+
+        list.add(sc);
+
+        System.out.println(list.size());
+        byte[] bytes = serialize(list);
+        try {
+            Files.write(path, bytes);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "" + (list.size() - 1);
+    }
+
     private boolean installSmartContract(ObjectInput objIn, ObjectOutput objOut) {
         try {
             SmartContract sc = (SmartContract) objIn.readObject();
@@ -73,7 +132,7 @@ public class BFTEndorser extends DefaultSingleRecoverable {
 
             CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
-            String ref = smartContractsDB.addSmartContract(sc);
+            String ref = addSmartContract(sc);
 
             ReplicaReply reply = new ReplicaReply(id, t.getOperation(), ref,
                     TOMUtil.computeHash(t.getOperation().getBytes()),
@@ -101,4 +160,5 @@ public class BFTEndorser extends DefaultSingleRecoverable {
     public byte[] getSnapshot() {
         return new byte[0];
     }
+
 }
