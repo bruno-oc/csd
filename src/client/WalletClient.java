@@ -16,6 +16,7 @@ import com.google.gson.reflect.TypeToken;
 import server.InsecureHostnameVerifier;
 import server.SystemReply;
 
+import javax.crypto.SecretKey;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -55,20 +56,25 @@ public class WalletClient {
     private static double time;
     private final KeyPair clientKey;
     private DataBase db;
+    private DataBase keyStore;
     
     private Gson gson = new Gson();
 
-    public WalletClient(String ip, String port) {
+    public WalletClient(String ip, String port, String id) {
         serverURI = String.format("https://%s:%s/", ip, port);
         restClient = this.startClient();
+        clientId = id;
+        
         clientKey = CryptoStuff.getKeyPair();
+        keyStore = new DataBase("security/keystore.json");
+        keyStore.addPublicKey(clientId, clientKey.getPublic().getEncoded());
 
         String filePath = "src/client/client_log.json";
         db = new DataBase(filePath);
         time = 0;
         num_op = 0;
     }
-
+    
     private static SSLContext getContext() throws Exception {
         KeyStore ks = KeyStore.getInstance("JKS");
         KeyStore ts = KeyStore.getInstance("JKS");
@@ -105,6 +111,7 @@ public class WalletClient {
         System.out.println("7: minerateBlock");
         System.out.println("8: installSmartContract");
         System.out.println("9: transferMoneyWithSmartContractRef");
+        System.out.println("0: transferMoneyWithPrivacy");
         System.out.println("h: help");
         System.out.println("q: quit");
     }
@@ -125,8 +132,7 @@ public class WalletClient {
             System.out.println("Usage: WalletClient <ip> <port> <clientId>");
             System.exit(-1);
         }
-        WalletClient w = new WalletClient(args[0], args[1]);
-        clientId = args[2];
+        WalletClient w = new WalletClient(args[0], args[1], args[2]);
         Scanner s = new Scanner(System.in);
         String input, who, to, ip;
         int port, lastN;
@@ -227,6 +233,19 @@ public class WalletClient {
 
                     start = System.nanoTime();
                     w.transferMoney(who, to, amount, scontract_ref);
+                    end = System.nanoTime();
+                    metrics(start, end);
+                    break;
+                case "0":
+                	System.out.print("from: ");
+                    who = s.nextLine();
+                    System.out.print("to: ");
+                    to = s.nextLine();
+                    System.out.print("amount: ");
+                    amount = Double.parseDouble(s.nextLine());
+                    
+                    start = System.nanoTime();
+                    w.transferMoneyWithPrivacy(who, to, amount);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
@@ -449,15 +468,13 @@ public class WalletClient {
         try {
             byte[] lastMinedBytes = Block.serialize(lastMined);
 
-            KeyPair kp = CryptoStuff.getKeyPair();
-
             Block minedBlock = new Block(transactionList, TOMUtil.computeHash(lastMinedBytes));
             minedBlock.setId(clientId);
-            minedBlock.setPub(kp.getPublic().getEncoded());
+            minedBlock.setPub(clientKey.getPublic().getEncoded());
             byte[] sig = new byte[0];
 
             try {
-                sig = CryptoStuff.sign(kp.getPrivate(), Transaction.serialize(minedBlock.getTransactions()));
+                sig = CryptoStuff.sign(clientKey.getPrivate(), Transaction.serialize(minedBlock.getTransactions()));
             } catch (Exception e1) {
                 e1.printStackTrace();
             }
@@ -631,5 +648,51 @@ public class WalletClient {
             }
         }
     }   
+    
+    public void transferMoneyWithPrivacy(String from, String to, double amount) {
+        WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
+
+        String algorithm = "AES/CBC/PKCS5Padding";
+    	SecretKey key = CryptoStuff.getAESKey();
+		String cipher = CryptoStuff.encrypt(algorithm, ""+amount, key);
+        
+        
+        String m = String.format(Transaction.TRANSFER, from, to, cipher);
+        Transaction output = getSignedTranscation(m);
+        byte[] toKey = keyStore.getPublicKeys().get(to);
+        byte[] envelope = CryptoStuff.encrypt(key.getEncoded(), CryptoStuff.getPublicKey(toKey));
+        output.setEnvelope(envelope);
+
+        short retries = 0;
+
+        while (retries < MAX_RETRIES) {
+            try {
+
+                Response r = target.path("/transfer/" + from).queryParam("to", to).request()
+                        .accept(MediaType.APPLICATION_JSON)
+                        .post(Entity.entity(Transaction.serialize(output), MediaType.APPLICATION_JSON));
+
+                if (r.getStatus() == Status.OK.getStatusCode() && r.hasEntity()) {
+                    SystemReply reply = r.readEntity(SystemReply.class);
+                    db.addLog(reply);
+                    System.out.println("from: " + from + " to: " + to + " amount: " + amount);
+                    return;
+                } else {
+                    System.out.println("Error, HTTP error status: " + r.getStatus());
+                    retries++;
+                }
+            } catch (ProcessingException pe) { // Error in communication with server
+                System.out.println("Timeout occurred.");
+                System.out.println(pe.getMessage()); // Could be removed
+                retries++;
+                try {
+                    Thread.sleep(RETRY_PERIOD); // wait until attempting again.
+                } catch (InterruptedException e) {
+                    // Nothing to be done here, if this happens we will just retry sooner.
+                }
+                System.out.println("Retrying to execute request.");
+            }
+        }
+    }
     
 }
