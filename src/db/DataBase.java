@@ -13,6 +13,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public class DataBase {
@@ -140,4 +141,20 @@ public class DataBase {
         writeData(filePath, jsonString);
         return "" + (logs.size() - 1);
     }
+    
+    public Map<String, byte[]> getPublicKeys() {
+        String jsonString = readData(filePath);
+
+        Type type = new TypeToken<Map<String, byte[]>>() {
+        }.getType();
+        return gson.fromJson(jsonString, type);
+    }
+
+    public void addPublicKey(String key, byte[] value) {
+    	Map<String, byte[]> logs = getPublicKeys();
+        logs.put(key, value);
+        String jsonString = gson.toJson(logs);
+        writeData(filePath, jsonString);
+    }
+    
 }
