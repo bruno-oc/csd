@@ -20,6 +20,8 @@ public class Transaction implements Serializable {
     private String operation;
     private byte[] sig;
     private byte[] pub;
+    
+    private byte[] envelope;
 
     public Transaction(String id, String operation, byte[] sig, byte[] pub) {
         this.id = id;
@@ -113,4 +115,12 @@ public class Transaction implements Serializable {
         return null;
     }
 
+	public byte[] getEnvelope() {
+		return envelope;
+	}
+
+	public void setEnvelope(byte[] envelope) {
+		this.envelope = envelope;
+	}
+    
 }
