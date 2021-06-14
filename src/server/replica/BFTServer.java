@@ -75,8 +75,14 @@ public class BFTServer extends DefaultSingleRecoverable {
             CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
             db.addLog(t);
-            double val = clientAmount(client);
-            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), "" + val,
+            
+            String[] str = t.getOperation().split(" ");
+            String val = str[str.length-1];
+            System.out.println("cipher = " + val);
+            if(t.getEnvelope() == null)
+            	val = "" + clientAmount(client);
+            
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), val,
                     TOMUtil.computeHash(t.getOperation().getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
             objOut.writeObject(reply);
@@ -306,6 +312,7 @@ public class BFTServer extends DefaultSingleRecoverable {
             switch (reqType) {
                 case OBTAIN_COINS:
                 case TRANSFER:
+                case TRANSFER_PRIVATE:
                     hasReply = writeTransaction(objIn, objOut);
                     break;
                 case MINE:
