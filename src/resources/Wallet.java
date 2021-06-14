@@ -85,8 +85,14 @@ public class Wallet implements WalletService {
 
         try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
              ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
-
-            objOut.writeObject(RequestType.TRANSFER);
+        	
+        	if(t.getEnvelope() == null)
+        		objOut.writeObject(RequestType.TRANSFER);
+        	else {
+        		objOut.writeObject(RequestType.TRANSFER_PRIVATE);
+        		System.out.println("entrei no private");
+        	}
+            
             objOut.writeObject(t);
             objOut.writeObject(from);
 
