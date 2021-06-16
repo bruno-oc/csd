@@ -42,6 +42,12 @@ public interface WalletService {
     SystemReply ledgerOfClientTransactions(@PathParam("who") String who, @QueryParam("lastN") int lastN, byte[] data);
 
     @POST
+    @Path("/transactions/private/{who}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    SystemReply ledgerOfClientPrivateTransactions(@PathParam("who") String who, byte[] data);
+
+    @POST
     @Path("/mine/lastBlock")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
