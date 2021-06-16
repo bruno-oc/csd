@@ -11,8 +11,12 @@ public class Transaction implements Serializable {
     public static final String CURRENT_AMOUNT = "currentAmount %s";
     public static final String GET_ALL_TRANSCATIONS = "ledgerOfGlobalTransactions";
     public static final String GET_USER_TRANSCATIONS = "ledgerOfClientTransactions %s";
-    public static final String GET_NOT_MINED_TRANSACTIONS= "pickNotMineratedTransaction %s";
-    public static final String GET_LAST_MINED_BLOCK= "obtainLastMinedBlock";
+    public static final String GET_NOT_MINED_TRANSACTIONS = "pickNotMineratedTransaction %s";
+    public static final String GET_LAST_MINED_BLOCK = "obtainLastMinedBlock";
+
+    public static final int NORMAL = 0;
+    public static final int SYMMETRIC = 1;
+    public static final int HOMOMORPHIC = 2;
 
     private static final long serialVersionUID = 1L;
 
@@ -20,7 +24,8 @@ public class Transaction implements Serializable {
     private String operation;
     private byte[] sig;
     private byte[] pub;
-    
+    private int type;
+
     private byte[] envelope;
 
     public Transaction(String id, String operation, byte[] sig, byte[] pub) {
@@ -28,6 +33,42 @@ public class Transaction implements Serializable {
         this.operation = operation;
         this.sig = sig;
         this.pub = pub;
+        type = 0;
+    }
+
+    public static byte[] serialize(Transaction obj) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ObjectOutputStream os = new ObjectOutputStream(out);
+            os.writeObject(obj);
+            return out.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Object deserialize(byte[] data) {
+        try {
+            ByteArrayInputStream in = new ByteArrayInputStream(data);
+            ObjectInputStream is = new ObjectInputStream(in);
+            return is.readObject();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static byte[] serialize(List<Transaction> obj) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ObjectOutputStream os = new ObjectOutputStream(out);
+            os.writeObject(obj);
+            return out.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public String getID() {
@@ -41,7 +82,7 @@ public class Transaction implements Serializable {
     public byte[] getSig() {
         return sig;
     }
-    
+
     public byte[] getPublicKey() {
         return pub;
     }
@@ -80,47 +121,27 @@ public class Transaction implements Serializable {
         return result;
     }
 
-    public static byte[] serialize(Transaction obj) {
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            ObjectOutputStream os = new ObjectOutputStream(out);
-            os.writeObject(obj);
-            return out.toByteArray();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+    public byte[] getEnvelope() {
+        return envelope;
     }
 
-    public static Object deserialize(byte[] data) {
-        try {
-            ByteArrayInputStream in = new ByteArrayInputStream(data);
-            ObjectInputStream is = new ObjectInputStream(in);
-            return is.readObject();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+    public void setEnvelope(byte[] envelope) {
+        this.envelope = envelope;
     }
 
-    public static byte[] serialize(List<Transaction> obj) {
-        try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            ObjectOutputStream os = new ObjectOutputStream(out);
-            os.writeObject(obj);
-            return out.toByteArray();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+    public int getType() {
+        return type;
     }
 
-	public byte[] getEnvelope() {
-		return envelope;
-	}
-
-	public void setEnvelope(byte[] envelope) {
-		this.envelope = envelope;
-	}
-    
+    /**
+     * type can have values:
+     * 0: normal transaction
+     * 1: private transaction with symmetric key
+     * 2: private transaction with homomorphic key
+     *
+     * @param type
+     */
+    public void setType(int type) {
+        this.type = type;
+    }
 }
