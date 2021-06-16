@@ -153,7 +153,7 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            SystemReply reply = asyncReply(serverAsynchSP, byteOut, TOMMessageType.ORDERED_REQUEST);
+            SystemReply reply = asyncReply(serverAsynchSP, byteOut, TOMMessageType.UNORDERED_REQUEST);
             db.addLog(t);
             return reply;
         } catch (IOException | InterruptedException e) {
@@ -180,7 +180,33 @@ public class Wallet implements WalletService {
             objOut.flush();
             byteOut.flush();
 
-            SystemReply reply = asyncReply(serverAsynchSP, byteOut, TOMMessageType.ORDERED_REQUEST);
+            SystemReply reply = asyncReply(serverAsynchSP, byteOut, TOMMessageType.UNORDERED_REQUEST);
+            db.addLog(t);
+            return reply;
+        } catch (IOException | InterruptedException e) {
+            System.out.println("Exception: " + e.getMessage());
+        }
+        return null;
+    }
+
+    @Override
+    public SystemReply ledgerOfClientPrivateTransactions(String who, byte[] data) {
+        System.out.println("ledgerOfClientPrivateTransactions");
+
+        Transaction t = (Transaction) Transaction.deserialize(data);
+        CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
+
+        try (ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+             ObjectOutput objOut = new ObjectOutputStream(byteOut);) {
+
+            objOut.writeObject(RequestType.GET_PRIVATE);
+            objOut.writeObject(t);
+            objOut.writeObject(who);
+
+            objOut.flush();
+            byteOut.flush();
+
+            SystemReply reply = asyncReply(serverAsynchSP, byteOut, TOMMessageType.UNORDERED_REQUEST);
             db.addLog(t);
             return reply;
         } catch (IOException | InterruptedException e) {

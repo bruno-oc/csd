@@ -20,7 +20,7 @@ public class BFTServer extends DefaultSingleRecoverable {
     private final DataBase db;
     private final DataBase blocksDB;
     private final int id;
-    private Gson gson;
+    private final Gson gson;
 
     public BFTServer(int id) {
         String filePath = "src/server/replica/bft_log_transactions_" + id + ".json";
@@ -49,6 +49,8 @@ public class BFTServer extends DefaultSingleRecoverable {
             List<Transaction> transactions = b.getTransactions();
             String log;
             for (Transaction t : transactions) {
+                if (t.getType() != Transaction.NORMAL)
+                    continue;
                 log = t.getOperation();
                 if (Arrays.stream(log.split(" ")).anyMatch(client::equals)
                         && (log.contains("obtainCoins") || log.contains("transferMoney"))) {
@@ -75,13 +77,13 @@ public class BFTServer extends DefaultSingleRecoverable {
             CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
             db.addLog(t);
-            
+
             String[] str = t.getOperation().split(" ");
-            String val = str[str.length-1];
+            String val = str[str.length - 1];
             System.out.println("cipher = " + val);
-            if(t.getEnvelope() == null)
-            	val = "" + clientAmount(client);
-            
+            if (t.getType() == Transaction.NORMAL)
+                val = "" + clientAmount(client);
+
             ReplicaReply reply = new ReplicaReply(id, t.getOperation(), val,
                     TOMUtil.computeHash(t.getOperation().getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
@@ -130,6 +132,33 @@ public class BFTServer extends DefaultSingleRecoverable {
                     TOMUtil.computeHash(op.getBytes()),
                     TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), op.getBytes()));
             System.out.println("return writeBlock");
+            objOut.writeObject(reply);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private boolean getPrivateTransactions(ObjectInput objIn, ObjectOutput objOut) {
+
+        try {
+            Transaction t = (Transaction) objIn.readObject();
+            String client = (String) objIn.readObject();
+            System.out.println("Searching for private transactions of : " + client);
+
+            CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
+
+            List<Transaction> logs = db.getLogsTransactions(), privateTransactions = new LinkedList<>();
+            for (Transaction log : logs)
+                if (log.getType() != Transaction.NORMAL &&
+                        Arrays.stream(log.getOperation().split(" ")).anyMatch(client::equals))
+                    privateTransactions.add(log);
+
+            ReplicaReply reply = new ReplicaReply(id, t.getOperation(), gson.toJson(privateTransactions),
+                    TOMUtil.computeHash(t.getOperation().getBytes()),
+                    TOMUtil.signMessage(CryptoStuff.getKeyPair().getPrivate(), t.getOperation().getBytes()));
+
             objOut.writeObject(reply);
             return true;
         } catch (Exception e) {
@@ -373,6 +402,9 @@ public class BFTServer extends DefaultSingleRecoverable {
                     break;
                 case GET_NOT_MINED:
                     hasReply = getNotMinedTransactions(objIn, objOut);
+                    break;
+                case GET_PRIVATE:
+                    hasReply = getPrivateTransactions(objIn, objOut);
                     break;
             }
             if (hasReply) {

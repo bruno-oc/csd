@@ -1,7 +1,11 @@
 package crypto;
 
+import crypto.hlib.hj.mlib.HomoAdd;
+import crypto.hlib.hj.mlib.PaillierKey;
+
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import java.io.FileInputStream;
@@ -31,11 +35,10 @@ public class CryptoStuff {
 		KeyGenerator keyGen;
 		try {
 			keyGen = KeyGenerator.getInstance("AES");
-			keyGen.init(256); // for example
+			keyGen.init(128); // for example
 			SecretKey secretKey = keyGen.generateKey();
 			return secretKey;
 		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return null;
@@ -122,7 +125,7 @@ public class CryptoStuff {
 
     public static byte[] doCrypto(int cipherMode, byte[] inputBytes, Key key){
         try {
-            Cipher cipher = Cipher.getInstance("RSA");
+            Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
             cipher.init(cipherMode, key);
             return cipher.doFinal(inputBytes);
         } catch (NoSuchPaddingException | NoSuchAlgorithmException
@@ -133,14 +136,22 @@ public class CryptoStuff {
     }
     
     public static void main(String[] args) {
+		KeyPair p = getKeyPair();
     	String algorithm = "AES/CBC/PKCS5Padding";
     	SecretKey key = getAESKey();
-		String cipher = encrypt(algorithm, "10", key);
-		
+		String cipher = encrypt(algorithm, "100", key);
 		System.out.println(cipher);
+
+		byte[] env = encrypt(key.getEncoded(), p.getPublic());
+		byte[] keyBytes = decrypt(env, p.getPrivate());
+
+		SecretKey newkey = new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
 		
-		String value = decrypt(algorithm, cipher, key);
+		String value = decrypt(algorithm, cipher, newkey);
 		System.out.println(value);
 	}
 
+    public static PaillierKey getHomoKey() {
+		return HomoAdd.generateKey();
+    }
 }
