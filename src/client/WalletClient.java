@@ -10,6 +10,8 @@ import com.google.gson.reflect.TypeToken;
 import crypto.CryptoStuff;
 import crypto.hlib.hj.mlib.PaillierKey;
 import db.DataBase;
+import crypto.hlib.hj.mlib.HomoAdd;
+
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import server.InsecureHostnameVerifier;
@@ -31,6 +33,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.FileInputStream;
 import java.lang.reflect.Type;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyStore;
@@ -136,7 +139,7 @@ public class WalletClient {
         Scanner s = new Scanner(System.in);
         String input, who, to, ip;
         int port, lastN;
-        double amount;
+        int amount;
         long start, end;
         help();
         do {
@@ -148,10 +151,10 @@ public class WalletClient {
                     System.out.print("who: ");
                     who = s.nextLine();
                     System.out.print("amount: ");
-                    amount = Double.parseDouble(s.nextLine());
+                    amount = Integer.parseInt(s.nextLine());
 
                     start = System.nanoTime();
-                    w.obtainCoin(who, amount);
+                    w.obtainCoin(who, ""+amount);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
@@ -161,10 +164,10 @@ public class WalletClient {
                     System.out.print("to: ");
                     to = s.nextLine();
                     System.out.print("amount: ");
-                    amount = Double.parseDouble(s.nextLine());
+                    amount = Integer.parseInt(s.nextLine());
 
                     start = System.nanoTime();
-                    w.transferMoney(who, to, amount, "");
+                    w.transferMoney(who, to, ""+amount, "", 0, null, true);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
@@ -227,12 +230,12 @@ public class WalletClient {
                     System.out.print("to: ");
                     to = s.nextLine();
                     System.out.print("amount: ");
-                    amount = Double.parseDouble(s.nextLine());
+                    amount = Integer.parseInt(s.nextLine());
                     System.out.print("scontract_ref: ");
                     String scontract_ref = s.nextLine();
 
                     start = System.nanoTime();
-                    w.transferMoney(who, to, amount, scontract_ref);
+                    w.transferMoney(who, to, ""+amount, scontract_ref, 0, null, true);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
@@ -242,10 +245,10 @@ public class WalletClient {
                     System.out.print("to: ");
                     to = s.nextLine();
                     System.out.print("amount: ");
-                    amount = Double.parseDouble(s.nextLine());
+                    amount = Integer.parseInt(s.nextLine());
 
                     start = System.nanoTime();
-                    w.transferMoneyWithPrivacy(who, to, amount);
+                    w.transferMoneyWithPrivacy(who, to, ""+amount, true);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
@@ -258,6 +261,15 @@ public class WalletClient {
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
+                case "12":
+                    System.out.print("who: ");
+                    who = s.nextLine();
+
+                    start = System.nanoTime();
+                    w.convertPrivateToPublicMoney(who);
+                    end = System.nanoTime();
+                    metrics(start, end);
+                    break;
                 case "h":
                     help();
                     break;
@@ -267,8 +279,7 @@ public class WalletClient {
         } while (!input.equals("q"));
     }
 
-
-    private static void changeServer(String ip, int port) {
+	private static void changeServer(String ip, int port) {
         serverURI = String.format("https://%s:%s/", ip, port);
     }
 
@@ -307,7 +318,7 @@ public class WalletClient {
         return null;
     }
 
-    public void obtainCoin(String who, double amount) {
+    public void obtainCoin(String who, String amount) {
 
         String m = String.format(Transaction.OBTAIN_COIN, who, amount);
         Transaction output = getSignedTranscation(m);
@@ -345,11 +356,14 @@ public class WalletClient {
         }
     }
 
-    public void transferMoney(String from, String to, double amount, String scontract_ref) {
+    public void transferMoney(String from, String to, String amount, String scontract_ref, int type, Transaction trans, boolean isPositive) {
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         String m = String.format(Transaction.TRANSFER, from, to, amount);
         Transaction output = getSignedTranscation(m);
+        output.setType(type);
+        output.setTransTypeOne(trans);
+        output.setPositive(isPositive);
 
 
         short retries = 0;
@@ -659,7 +673,7 @@ public class WalletClient {
         }
     }
 
-    public void transferMoneyWithPrivacy(String from, String to, double amount) {
+    public void transferMoneyWithPrivacy(String from, String to, String amount, boolean isPositive) {
         WebTarget target = restClient.target(serverURI).path(WalletService.PATH);
 
         String algorithm = "AES/CBC/PKCS5Padding";
@@ -677,6 +691,7 @@ public class WalletClient {
         byte[] envelope = CryptoStuff.encrypt(key.getEncoded(), CryptoStuff.getPublicKey(toKey));
         output.setEnvelope(envelope);
         output.setType(Transaction.SYMMETRIC);
+        output.setPositive(isPositive);
 
         short retries = 0;
 
@@ -718,21 +733,64 @@ public class WalletClient {
                 // criar transação para si proprio
                 String[] tokens = t.getOperation().split(" ");
                 String amountCipher = tokens[tokens.length - 1];
-                amountCipher.getBytes(StandardCharsets.UTF_8);
+                
                 byte[] env = t.getEnvelope();
                 byte[] keyBytes = CryptoStuff.decrypt(env, clientKey.getPrivate());
-                for(byte b : keyBytes)
-                    System.out.print(b +" ");
-                System.out.println("\n");
-                System.out.println("KeyLength: " + keyBytes.length);
                 SecretKey key = new SecretKeySpec(keyBytes, 0, keyBytes.length, "AES");
 
                 System.out.println("To decifer: " + amountCipher);
                 String amount = CryptoStuff.decrypt("AES/CBC/PKCS5Padding", amountCipher, key);
                 System.out.println("Decrypted amount: " + amount);
+                
+        		try {
+        			BigInteger big1 = new BigInteger(amount);
+					BigInteger big1Code = HomoAdd.encrypt(big1, homomorphicKey);
+					
+					this.transferMoney(clientId, clientId, ""+big1Code, "", 2, t, t.isPositive());
+					
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+                
             }
-
-
     }
+    
+    private void convertPrivateToPublicMoney(String who) {
+    	List<Transaction> privateTransactions = ledgerTransactions("/transactions/private/", who, -1);
+    	
+    	try {
+    		BigInteger big1 = new BigInteger("0");
+        	BigInteger big1Code = HomoAdd.encrypt(big1, homomorphicKey);
+        	for (Transaction t : privateTransactions) {
+                if (t.getType() == Transaction.HOMOMORPHIC) {
+                	
+                	String[] tokens = t.getOperation().split(" ");
+                    String amountCipher = tokens[tokens.length - 1];
+                    
+                	BigInteger big2Code = new BigInteger(amountCipher);
+                	
+                	if(t.isPositive())
+                		big1Code = HomoAdd.sum(big1Code, big2Code, homomorphicKey.getNsquare());
+                	else
+                		big1Code = HomoAdd.dif(big1Code, big2Code, homomorphicKey.getNsquare());
+                }
+        	}
+        	BigInteger total = HomoAdd.decrypt(big1Code, homomorphicKey);
+        	
+        	this.transferMoneyWithPrivacy(who, who, ""+total, false);
+        	this.finalizePrivateTransactions(who);
+        	
+        	//i need to spend my money, so I need to show it :(
+        	this.obtainCoin(who, ""+total);
+        	
+        	System.out.println();
+        	System.out.println("Private amount: " + 0);
+        	
+    	} catch(Exception e) {
+    		e.printStackTrace();
+    	}
+    	
+    	
+	}
 
 }
