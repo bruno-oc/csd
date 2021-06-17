@@ -149,11 +149,29 @@ public class BFTServer extends DefaultSingleRecoverable {
 
             CryptoStuff.verifySignature(CryptoStuff.getPublicKey(t.getPublicKey()), t.getOperation().getBytes(), t.getSig());
 
-            List<Transaction> logs = db.getLogsTransactions(), privateTransactions = new LinkedList<>();
-            for (Transaction log : logs)
-                if (log.getType() != Transaction.NORMAL &&
-                        Arrays.stream(log.getOperation().split(" ")).anyMatch(client::equals))
-                    privateTransactions.add(log);
+            List<Block> minedBlocks = blocksDB.getLogsBlocks();
+            List<Transaction> privateTransactions = new LinkedList<>(), temp = new LinkedList<>();
+            
+            for (Block b : minedBlocks) {
+            	List<Transaction> logs = b.getTransactions();
+            	for (Transaction log : logs)
+                    if (log.getType() == Transaction.HOMOMORPHIC &&
+                            Arrays.stream(log.getOperation().split(" ")).anyMatch(client::equals)) {
+                    	temp.add(log.getTransTypeOne());
+                    	privateTransactions.add(log);
+                    }
+            }
+            
+            for (Block b : minedBlocks) {
+            	List<Transaction> logs = b.getTransactions();
+	            for (Transaction log : logs)
+	                if (log.getType() == Transaction.SYMMETRIC &&
+	                        Arrays.stream(log.getOperation().split(" ")).anyMatch(client::equals) &&
+	                        !temp.contains(log)) {
+	                	privateTransactions.add(log);
+	                }
+            }
+                	
 
             ReplicaReply reply = new ReplicaReply(id, t.getOperation(), gson.toJson(privateTransactions),
                     TOMUtil.computeHash(t.getOperation().getBytes()),
@@ -276,10 +294,8 @@ public class BFTServer extends DefaultSingleRecoverable {
 
             List<Transaction> logs = db.getLogsTransactions();
 
-            if (n > logs.size()) {
-                System.out.println("Client asked for " + n + " but there are only " + logs.size() + " transactions!");
-                return false;
-            }
+            if (n > logs.size())
+                n = logs.size();
 
             List<Transaction> temp = logs.subList(0, n);
             List<Transaction> jsonElement = new ArrayList<Transaction>(temp);
