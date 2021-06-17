@@ -27,6 +27,8 @@ public class Transaction implements Serializable {
     private int type;
 
     private byte[] envelope;
+    private Transaction transTypeOne;
+    private boolean isPositive;
 
     public Transaction(String id, String operation, byte[] sig, byte[] pub) {
         this.id = id;
@@ -34,6 +36,7 @@ public class Transaction implements Serializable {
         this.sig = sig;
         this.pub = pub;
         type = 0;
+        setPositive(true);
     }
 
     public static byte[] serialize(Transaction obj) {
@@ -144,4 +147,20 @@ public class Transaction implements Serializable {
     public void setType(int type) {
         this.type = type;
     }
+
+	public Transaction getTransTypeOne() {
+		return transTypeOne;
+	}
+
+	public void setTransTypeOne(Transaction transTypeOne) {
+		this.transTypeOne = transTypeOne;
+	}
+
+	public boolean isPositive() {
+		return isPositive;
+	}
+
+	public void setPositive(boolean isPositive) {
+		this.isPositive = isPositive;
+	}
 }
