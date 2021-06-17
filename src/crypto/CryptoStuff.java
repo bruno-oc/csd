@@ -45,8 +45,7 @@ public class CryptoStuff {
 	}
 	
 	public static IvParameterSpec generateIv() {
-	    byte[] iv = new byte[16];
-	    new SecureRandom().nextBytes(iv);
+	    byte[] iv = "aabbaabbaabbaaba".getBytes();
 	    return new IvParameterSpec(iv);
 	}
 	
