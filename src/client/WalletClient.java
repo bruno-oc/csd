@@ -117,6 +117,7 @@ public class WalletClient {
         System.out.println("10: transferMoneyWithPrivacy");
         System.out.println("11: finalizePrivateTransactions");
         System.out.println("12: convertPrivateToPublicMoney");
+        System.out.println("13: searchPrivateTransactions");
         System.out.println("h: help");
         System.out.println("q: quit");
     }
@@ -263,6 +264,12 @@ public class WalletClient {
                 case "12":
                     start = System.nanoTime();
                     w.convertPrivateToPublicMoney(clientId);
+                    end = System.nanoTime();
+                    metrics(start, end);
+                    break;
+                case "13":
+                    start = System.nanoTime();
+                    w.getPrivateTransactions(clientId);
                     end = System.nanoTime();
                     metrics(start, end);
                     break;
@@ -787,8 +794,10 @@ public class WalletClient {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
 
-
+    private void getPrivateTransactions(String clientId) {
+        List<Transaction> privateTransactions = ledgerTransactions("/transactions/private/", clientId, -1);
     }
 
 }
