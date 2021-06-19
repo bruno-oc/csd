@@ -1,9 +1,9 @@
 ## Confiabilidade de Sistemas Distribuidos
 
-###**Blockchained Global Wallet Service**
+**Blockchained Global Wallet Service:**
 A decentralized service for a distributed and replicated ledger of registration and control of operations of clients, based on a consistent replication architecture, with multiple servers and with byzantine fault tolerance guarantee.
 
-#####**Deployment Guide**
+**Deployment Guide**
 
 On the run directory are provided some scripts that facilitate the testing and deployment of the servers.
 
