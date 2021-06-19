@@ -33,5 +33,5 @@ On the run directory are provided some scripts that facilitate the testing and d
 
 * To launch a **BGWS Client** with identifier ID:
 
-		./run/server.sh ADDRESS PORT ID
+		./run/client.sh ADDRESS PORT ID
 	where ADDRESS PORT correspond to the ADDRESS:PORT of a BGWS Server
